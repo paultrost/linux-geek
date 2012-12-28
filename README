@@ -1,0 +1,1 @@
+These scripts will convert .zip files to .7z files. They take a single filename or a glob, *.zip.
