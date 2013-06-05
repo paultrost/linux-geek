@@ -7,7 +7,9 @@ use warnings;
 
 # Accept list of names from what is passed to it from the shell
 # If filelist is specified (*.zip ?) then exit
-die "Please specify a filename(s)\n" if ! @ARGV;
+if (!@ARGV) {
+	die "Please specify a filename(s)\n";
+}
 
 # Temp directory that will be used for zip files manipulation
 my $tmpdirectory = 'convert_tmp';
@@ -15,17 +17,19 @@ my $tmpdirectory = 'convert_tmp';
 # For each file, make the temp firectory, unzip the zip, and archive the 7z
 foreach my $file (@ARGV) {
     mkdir $tmpdirectory;
-    my ($filename,$extn) = split('.zip', $file);
-    $extn = substr($file , -3);
-    chdir $tmpdirectory;
+    my ( $filename, $extn ) = split( '.zip', $file );
+    $extn = substr( $file , -3 );
     print "Uncompressing $file\n";
-    `unzip "../$file" &> /dev/null`;
+    chdir $tmpdirectory;
+    qx(unzip "../$file" &>/dev/null);
+    die "Could not uncompress $file, $!" if $? != 0;
     print "Compressing $filename.7z\n";
-    `7z a "$filename".7z &>/dev/null`;
-    `mv *.7z ../`;
+    qx(7z a "$filename.7z" &>/dev/null);
+    die "Could not comopress $filename, $!" if $? != 0;
+    qx(mv *.7z ../);
     chdir '../';
     print "Removing working directory and $file\n";
-    `rm -rf "${tmpdirectory}"`;
+    qx(rm -rf $tmpdirectory);
     unlink $file;
     print "\n";
 }
