@@ -20,7 +20,7 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.3.1     #
+# Version: 0.3.2     #
 # 2013-07-17         #
 ######################
 
@@ -75,8 +75,10 @@ GetOptions(
     'folder=s'          => \@folders,
 );
 
+# Display help screen if -help option specified
 pod2usage(1) if $help;
 
+# Display error if one of the required parameters isn't specified
 if ( !$device ||
      !$mountpoint ||
      !$fstype ||
@@ -132,8 +134,8 @@ chomp( my $hostname = qx(hostname) );
 # Check to see that $device and $mountpoint are valid #
 #######################################################
 
-die "$device is not a valid block device\n" if (!-b $device);
-die "$mountpoint does not exist, create manually.\n" if (!-d $mountpoint);
+die "$device is not a valid block device\n"          if ( !-b $device );
+die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
 
 #################
 # Begin @REPORT #
@@ -206,6 +208,8 @@ else {
 # Send backup successful/failed message to recipient #
 ######################################################
 
+# If the SMTP transaction is failing, add 'Debug => 1,' to the method below
+# which will output the full details of the SMTP conenction
 my $smtp = Net::SMTP->new(
     $outbound_server,
     Port    => $smtp_port,
