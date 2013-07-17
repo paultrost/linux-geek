@@ -20,7 +20,7 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.3       #
+# Version: 0.3.1     #
 # 2013-07-17         #
 ######################
 
@@ -31,10 +31,16 @@ use Authen::SASL;
 use Getopt::Long;
 use Pod::Usage;
 
+#################################
 ## USER CONFIGURABLE VARIABLES ##
+#################################
+
 my @rsyncopts = qw( -auv --delete);
 
-## Stop if not called as the root user
+########################################
+## Stop if not called as the root user #
+########################################
+
 die "This script has to be run as root!\n" if ( $> != 0 );
 
 ###########################################################
@@ -52,6 +58,7 @@ my $email_addr = $email_auth_addr;
 my $smtp_port = '587';
 my $outbound_server;
 my @folders;
+my $helo = qx(hostname);
 
 # Get the options from the command line
 GetOptions(
@@ -64,10 +71,12 @@ GetOptions(
     'smtp_port=s'       => \$smtp_port,
     'outbound_server=s' => \$outbound_server,
     'folder=s'          => \@folders,
+    'helo=s'            => \$helo,
     'help|?'            => \$help,
 );
 
 pod2usage(1) if $help;
+
 if ( !$device ||
      !$mountpoint ||
      !$fstype ||
@@ -91,6 +100,7 @@ Options:
 
  -help            Display available and required options
  -smtp_port       SMTP port to connect to (defaults to 587)
+ -hello           Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
 
 Required Parameters:
  
@@ -99,7 +109,7 @@ Required Parameters:
  -fstype          Filesystem type on the device (ext4, ntfs, etc..)
  -email_addr      Email address to send backup report to (defaults to email_auth_addr)
  -email_auth_addr Email address for SMTP Auth
- -email_auth_pass Password for SMTP Auth
+ -email_auth_pass Password for SMTP Auth (use \ to escape characters)
  -outbound_server Server to send mail through
  -folder          Directory to back up (can be specified multiple times (see ex.)
 
@@ -109,9 +119,9 @@ Example:
 
 =cut
 
-######################################
-## NOTHING BELOW HERE SHOULD CHANGE ##
-######################################
+###############################
+# Additional variables needed #
+###############################
 
 my $status;
 my $nounmount;
@@ -199,11 +209,9 @@ else {
 my $smtp = Net::SMTP->new(
     $outbound_server,
     Port    => $smtp_port,
-    Hello   => $hostname,
+    Hello   => $helo,
     Timeout => 10,
-);
-
-die "Could not connect to $outbound_server\n" if !$smtp;
+) or die "Could not connect to $outbound_server using port $smtp_port, $!\n";
 
 $smtp->auth($email_auth_addr, $email_auth_pass);
 $smtp->mail($email_auth_addr);
