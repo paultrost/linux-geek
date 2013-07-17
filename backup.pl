@@ -49,30 +49,30 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 
 # Set defaults for positional parameters
 my $help;
+my $smtp_port = '587';
+my $helo = qx(hostname);
 my $device;
 my $mountpoint;
 my $fstype;
 my $email_auth_addr;
 my $email_auth_pass;
 my $email_addr = $email_auth_addr;
-my $smtp_port = '587';
 my $outbound_server;
 my @folders;
-my $helo = qx(hostname);
 
 # Get the options from the command line
 GetOptions(
+    'help|?'            => \$help,
+    'smtp_port=s'       => \$smtp_port,
+    'helo=s'            => \$helo,
     'device=s'          => \$device,
     'mountpoint=s'      => \$mountpoint,
     'fstype=s'          => \$fstype,
-    'email_addr=s'      => \$email_addr,
     'email_auth_addr=s' => \$email_auth_addr,
     'email_auth_pass=s' => \$email_auth_pass,
-    'smtp_port=s'       => \$smtp_port,
+    'email_addr=s'      => \$email_addr,
     'outbound_server=s' => \$outbound_server,
     'folder=s'          => \@folders,
-    'helo=s'            => \$helo,
-    'help|?'            => \$help,
 );
 
 pod2usage(1) if $help;
@@ -107,9 +107,9 @@ Required Parameters:
  -device          Block device to mount
  -mountpoint      Directory to mount device at
  -fstype          Filesystem type on the device (ext4, ntfs, etc..)
- -email_addr      Email address to send backup report to (defaults to email_auth_addr)
  -email_auth_addr Email address for SMTP Auth
  -email_auth_pass Password for SMTP Auth (use \ to escape characters)
+ -email_addr      Email address to send backup report to (defaults to email_auth_addr)
  -outbound_server Server to send mail through
  -folder          Directory to back up (can be specified multiple times (see ex.)
 
