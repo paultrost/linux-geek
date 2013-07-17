@@ -1,1 +1,3 @@
-These scripts will convert .zip files to .7z files. They take a single filename or a glob, *.zip.
+backup.pl - Script that uses rsync to back up folders to a locally mounted device like an external hard drive
+
+convert_zip_to_7z.pl - Convert .zip files to .7z files. It takes a single filename or a glob, *.zip
