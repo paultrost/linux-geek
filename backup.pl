@@ -27,6 +27,7 @@
 use strict;
 use warnings;
 use Net::SMTP;
+use Net::SMTP::SSL;
 use Authen::SASL;
 use Getopt::Long;
 use Pod::Usage;
@@ -101,7 +102,7 @@ backup.pl [options] [parameters]
 Options:
 
  -help            Display available and required options
- -smtp_port       SMTP port to connect to (defaults to 587)
+ -smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
  -hello           Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
 
 Required Parameters:
@@ -210,12 +211,20 @@ else {
 
 # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
 # which will output the full details of the SMTP conenction
-my $smtp = Net::SMTP->new(
+my $smtp_method;
+if ( $smtp_port eq '465' ) {
+    $smtp_method = 'Net::SMTP::SSL';
+} 
+else {
+    $smtp_method = 'Net::SMTP';
+}
+
+my $smtp = $smtp_method->new(
     $outbound_server,
     Port    => $smtp_port,
     Hello   => $helo,
     Timeout => 10,
-) or die "Could not connect to $outbound_server using port $smtp_port, $!\n";
+) or die "Could not connect to $outbound_server using port $smtp_port\n$!\n";
 
 $smtp->auth($email_auth_addr, $email_auth_pass);
 $smtp->mail($email_auth_addr);
