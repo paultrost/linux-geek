@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use File::Path qw(rmtree);
 
 # This script will convert zip files into 7z files. There is no license, it's in the public domain.
 
@@ -22,14 +23,14 @@ foreach my $file (@ARGV) {
     print "Uncompressing $file\n";
     chdir $tmpdirectory;
     qx(unzip "../$file" &>/dev/null);
-    die "Could not uncompress $file, $!" if $? != 0;
+    die "Could not uncompress $file: $!" if $? != 0;
     print "Compressing $filename.7z\n";
     qx(7z a "$filename.7z" &>/dev/null);
-    die "Could not comopress $filename, $!" if $? != 0;
-    qx(mv *.7z ../);
+    die "Could not compress $filename: $!" if $? != 0;
+    rename "$filename.7z", "../$filename.7z";
     chdir '../';
     print "Removing working directory and $file\n";
-    qx(rm -rf $tmpdirectory);
+    rmtree $tmpdirectory;
     unlink $file;
     print "\n";
 }
