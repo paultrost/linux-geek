@@ -32,8 +32,7 @@ use Getopt::Long;
 use Pod::Usage;
 
 ## USER CONFIGURABLE VARIABLES ##
-#my @folders         = qw( /etc /home /usr/local );
-my @rsyncopts       = qw( -auv --delete);
+my @rsyncopts = qw( -auv --delete);
 
 ## Stop if not called as the root user
 die "This script has to be run as root!\n" if ( $> != 0 );
@@ -44,12 +43,12 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 
 # Set defaults for positional parameters
 my $help;
-my $device;    
+my $device;
 my $mountpoint;
 my $fstype;
-my $email_addr;
 my $email_auth_addr;
 my $email_auth_pass;
+my $email_addr = $email_auth_addr;
 my $smtp_port = '587';
 my $outbound_server;
 my @folders;
@@ -77,7 +76,7 @@ if ( !$device ||
      !$email_auth_pass ||
      !$outbound_server ||
      !@folders ) {
-    die "Not all required paramaters specified, please check your arguments against the Required Parameters list \n";
+    die "Not all required paramaters specified, please run '$0 --help' and check your arguments against the Required Parameters list\n";
 }
 
 =head1 NAME
@@ -90,23 +89,23 @@ backup.pl [options] [parameters]
 
 Options:
 
-    -help            Display available and required options
-    -smtp_port       SMTP port to connect to (defaults to 587)
+ -help            Display available and required options
+ -smtp_port       SMTP port to connect to (defaults to 587)
 
- Required Parameters:
+Required Parameters:
  
-    -device          Block device to mount
-    -mountpoint      Directory to mount device at
-    -fstype          Filesystem type on the device (ext4, ntfs, etc..)
-    -email_addr      Email address to send backup report to
-    -email_auth_addr Email address for SMTP Auth
-    -email_auth_pass Password for SMTP Auth
-    -outbound_server Server to send mail through
-    -folder          Directory to back up (can be specified multiple times (see ex.)
+ -device          Block device to mount
+ -mountpoint      Directory to mount device at
+ -fstype          Filesystem type on the device (ext4, ntfs, etc..)
+ -email_addr      Email address to send backup report to (defaults to email_auth_addr)
+ -email_auth_addr Email address for SMTP Auth
+ -email_auth_pass Password for SMTP Auth
+ -outbound_server Server to send mail through
+ -folder          Directory to back up (can be specified multiple times (see ex.)
 
 Example:
 
-    backup.pl -device /dev/sdc1 -mountpoint /backup -fstype ext4 -email_addr me@me.com -email_auth_user me@me.com -email_auth_pass 12345 -outbound_server mail.myserver.com -folder /etc -folder /usr/local
+  backup.pl -device /dev/sdc1 -mountpoint /backup -fstype ext4 -email_addr me@me.com -email_auth_user me@me.com -email_auth_pass 12345 -outbound_server mail.myserver.com -folder /etc -folder /usr/local
 
 =cut
 
