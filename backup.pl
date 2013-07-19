@@ -51,7 +51,7 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 # Set defaults for positional parameters
 my $help;
 my $smtp_port = '587';
-my $helo = qx(hostname);
+my $helo      = qx(hostname);
 my $device;
 my $mountpoint;
 my $fstype;
@@ -80,14 +80,14 @@ GetOptions(
 pod2usage(1) if $help;
 
 # Display error if one of the required parameters isn't specified
-if ( !$device ||
-     !$mountpoint ||
-     !$fstype ||
-     !$email_addr ||
-     !$email_auth_addr ||
-     !$email_auth_pass ||
-     !$outbound_server ||
-     !@folders ) {
+if (   !$device
+    || !$mountpoint
+    || !$fstype
+    || !$email_addr
+    || !$email_auth_addr
+    || !$email_auth_pass
+    || !$outbound_server
+    || !@folders ) {
     die "Not all required paramaters specified, please run '$0 --help' and check your arguments against the Required Parameters list\n";
 }
 
@@ -142,7 +142,7 @@ die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
 # Begin @REPORT #
 #################
 
-push @REPORT, "Starting backup of $hostname at ", qx(date), "\n"; 
+push @REPORT, "Starting backup of $hostname at ", qx(date), "\n";
 
 my $drivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
 if ($drivemount) {
@@ -160,13 +160,13 @@ else {
 # Testing for false $drivemount seems backwards yes, but keep in mind
 # this is testing captured output of the mount command whic will only
 # have output in a failure
-if (!$drivemount) {
+if ( !$drivemount ) {
     foreach my $folder (@folders) {
         my $output = qx(rsync @rsyncopts $folder $mountpoint);
         if ( $output !~ /sent.*bytes.*received.*bytes/ ) {
             push @REPORT, "Could not copy $folder to $mountpoint\n\n";
             push @REPORT, $output;
-        } 
+        }
         else {
             push @REPORT, "Now backing up folder '$folder':\n";
             push @REPORT, "$output\n\n";
@@ -181,7 +181,7 @@ if (!$drivemount) {
 # Unmount $device, but only if this script wa swhat mounted it
 $drivemount = qx(umount $mountpoint 2>&1) if !$nounmount;
 
-if ($drivemount and !$nounmount) {
+if ( $drivemount and !$nounmount ) {
     push @REPORT, "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
 }
 elsif ($nounmount) {
@@ -198,7 +198,7 @@ else {
 # Set status message for report to failed or successful based on if 
 # error messages beginning with * were found
 push @REPORT, "Backup finished at ", qx(date);
-if (grep /\*.*\*/, @REPORT) {
+if ( grep /\*.*\*/, @REPORT ) {
     $status = 'failed';
 }
 else {
@@ -226,7 +226,7 @@ my $smtp = $smtp_method->new(
     Timeout => 10,
 ) or die "Could not connect to $outbound_server using port $smtp_port\n$!\n";
 
-$smtp->auth($email_auth_addr, $email_auth_pass);
+$smtp->auth( $email_auth_addr, $email_auth_pass );
 $smtp->mail($email_auth_addr);
 $smtp->to($email_addr);
 $smtp->data();
