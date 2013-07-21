@@ -77,7 +77,7 @@ GetOptions(
 );
 
 # Display help screen if -help option specified
-pod2usage(1) if $help;
+pod2usage(1) if $help or !@ARGV;
 
 # Display error if one of the required parameters isn't specified
 if (   !$device
@@ -209,8 +209,6 @@ else {
 # Send backup successful/failed message to recipient #
 ######################################################
 
-# If the SMTP transaction is failing, add 'Debug => 1,' to the method below
-# which will output the full details of the SMTP conenction
 my $smtp_method;
 if ( $smtp_port eq '465' ) {
     $smtp_method = 'Net::SMTP::SSL';
@@ -219,6 +217,8 @@ else {
     $smtp_method = 'Net::SMTP';
 }
 
+# If the SMTP transaction is failing, add 'Debug => 1,' to the method below
+# which will output the full details of the SMTP conenction
 my $smtp = $smtp_method->new(
     $outbound_server,
     Port    => $smtp_port,
