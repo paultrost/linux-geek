@@ -44,6 +44,12 @@ my @rsyncopts = qw( -auv --delete);
 
 die "This script has to be run as root!\n" if ( $> != 0 );
 
+#############################################
+# Display help screen if no arguments given # 
+#############################################
+
+pod2usage(1) if !@ARGV;
+
 ###########################################################
 # Parse positional parameters for flags and set variables #
 ###########################################################
