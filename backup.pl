@@ -77,7 +77,7 @@ GetOptions(
 );
 
 # Display help screen if -help option specified
-pod2usage(1) if $help or !@ARGV;
+pod2usage(1) if $help;
 
 # Display error if one of the required parameters isn't specified
 if (   !$device
