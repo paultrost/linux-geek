@@ -20,8 +20,8 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.3.2     #
-# 2013-07-17         #
+# Version: 0.3.3     #
+# 2013-07-20         #
 ######################
 
 use strict;
@@ -80,16 +80,8 @@ GetOptions(
 pod2usage(1) if $help;
 
 # Display error if one of the required parameters isn't specified
-if (   !$device
-    || !$mountpoint
-    || !$fstype
-    || !$email_addr
-    || !$email_auth_addr
-    || !$email_auth_pass
-    || !$outbound_server
-    || !@folders ) {
-    die "Not all required paramaters specified, please run '$0 --help' and check your arguments against the Required Parameters list\n";
-}
+die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
+  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_addr and $email_auth_pass and $outbound_server and @folders );
 
 =head1 NAME
 
@@ -178,7 +170,7 @@ if ( !$drivemount ) {
 ### Unmount $device ###
 ####################### 
 
-# Unmount $device, but only if this script wa swhat mounted it
+# Unmount $device, but only if this script was what mounted it
 $drivemount = qx(umount $mountpoint 2>&1) if !$nounmount;
 
 if ( $drivemount and !$nounmount ) {
