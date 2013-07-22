@@ -101,7 +101,7 @@ Options:
 
  -help            Display available and required options
  -smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
- -hello           Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
+ -helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
 
 Required Parameters:
  
