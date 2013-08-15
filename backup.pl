@@ -20,13 +20,12 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.3.3     #
+# Version: 0.3.4     #
 # 2013-07-20         #
 ######################
 
 use strict;
 use warnings;
-use Net::SMTP;
 use Net::SMTP::SSL;
 use Authen::SASL;
 use Getopt::Long;
@@ -65,7 +64,7 @@ my $email_auth_addr;
 my $email_auth_pass;
 my $email_addr = $email_auth_addr;
 my $outbound_server;
-my @folders;
+my $folders;
 
 # Get the options from the command line
 GetOptions(
@@ -79,7 +78,7 @@ GetOptions(
     'email_auth_pass=s' => \$email_auth_pass,
     'email_addr=s'      => \$email_addr,
     'outbound_server=s' => \$outbound_server,
-    'folder=s'          => \@folders,
+    'folders=s'         => \$folders,
 );
 
 # Display help screen if -help option specified
@@ -87,7 +86,7 @@ pod2usage(1) if $help;
 
 # Display error if one of the required parameters isn't specified
 die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
-  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_addr and $email_auth_pass and $outbound_server and @folders );
+  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_addr and $email_auth_pass and $outbound_server and $folders );
 
 =head1 NAME
 
@@ -99,24 +98,24 @@ backup.pl [options] [parameters]
 
 Options:
 
- -help            Display available and required options
- -smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
- -helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
+ --help            Display available and required options
+ --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
+ --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
 
 Required Parameters:
  
- -device          Block device to mount
- -mountpoint      Directory to mount device at
- -fstype          Filesystem type on the device (ext4, ntfs, etc..)
- -email_auth_addr Email address for SMTP Auth
- -email_auth_pass Password for SMTP Auth (use \ to escape characters)
- -email_addr      Email address to send backup report to (defaults to email_auth_addr)
- -outbound_server Server to send mail through
- -folder          Directory to back up (can be specified multiple times (see ex.)
+ --device          Block device to mount
+ --mountpoint      Directory to mount device at
+ --fstype          Filesystem type on the device (ext4, ntfs, etc..)
+ --email_auth_addr Email address for SMTP Auth
+ --email_auth_pass Password for SMTP Auth (use \ to escape characters)
+ --email_addr      Email address to send backup report to (defaults to email_auth_addr)
+ --outbound_server Server to send mail through
+ --folders         Directories to back up (for multiple folders, see example)
 
 Example:
 
-  backup.pl -device /dev/sdc1 -mountpoint /backup -fstype ext4 -email_addr me@me.com -email_auth_user me@me.com -email_auth_pass 12345 -outbound_server mail.myserver.com -folder /etc -folder /usr/local
+  backup.pl --device /dev/sdc1 --mountpoint /backup --fstype ext4 --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder "/etc /usr/local/ /home"
 
 =cut
 
@@ -126,7 +125,9 @@ Example:
 
 my $status;
 my $nounmount;
+my $error;
 my @REPORT;
+chomp( my $date     = qx(date) );
 chomp( my $hostname = qx(hostname) );
 
 #######################################################
@@ -140,7 +141,7 @@ die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
 # Begin @REPORT #
 #################
 
-push @REPORT, "Starting backup of $hostname at ", qx(date), "\n";
+push @REPORT, "Starting backup of $hostname at $date\n\n";
 
 my $drivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
 if ($drivemount) {
@@ -156,14 +157,24 @@ else {
 ################################################
 
 # Testing for false $drivemount seems backwards yes, but keep in mind
-# this is testing captured output of the mount command whic will only
+# this is testing captured output of the mount command which will only
 # have output in a failure
 if ( !$drivemount ) {
+    my @folders = split( / / , $folders );
     foreach my $folder (@folders) {
+        if ( !-d $folder ) {
+            push @REPORT, "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
+            $error++;
+            next;
+        }
+
+        # Actually run rsync
         my $output = qx(rsync @rsyncopts $folder $mountpoint);
+
         if ( $output !~ /sent.*bytes.*received.*bytes/ ) {
             push @REPORT, "Could not copy $folder to $mountpoint\n\n";
             push @REPORT, $output;
+            $error++;
         }
         else {
             push @REPORT, "Now backing up folder '$folder':\n";
@@ -181,9 +192,11 @@ $drivemount = qx(umount $mountpoint 2>&1) if !$nounmount;
 
 if ( $drivemount and !$nounmount ) {
     push @REPORT, "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
+    $error++;
 }
 elsif ($nounmount) {
     push @REPORT, "*** $device was already mounted on $mountpoint, not attemping to unmount ***\n\n";
+    $error++;
 }
 else {
     push @REPORT, "$device has been unmounted from $mountpoint\n\n";
@@ -195,9 +208,10 @@ else {
 
 # Set status message for report to failed or successful based on if 
 # error messages beginning with * were found
-push @REPORT, "Backup finished at ", qx(date);
-if ( grep /\*.*\*/, @REPORT ) {
-    $status = 'failed';
+chomp( $date = qx(date) );
+push @REPORT, "Backup finished at $date\n";
+if ($error) {
+    $status = "failed or couldn't rsync a specified directory";
 }
 else {
     $status = 'successful';
@@ -207,13 +221,7 @@ else {
 # Send backup successful/failed message to recipient #
 ######################################################
 
-my $smtp_method;
-if ( $smtp_port eq '465' ) {
-    $smtp_method = 'Net::SMTP::SSL';
-} 
-else {
-    $smtp_method = 'Net::SMTP';
-}
+my $smtp_method = $smtp_port eq '465' ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
 # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
 # which will output the full details of the SMTP conenction
@@ -231,6 +239,7 @@ $smtp->data();
 $smtp->datasend("From: $email_auth_addr\n");
 $smtp->datasend("To: $email_addr\n");
 $smtp->datasend("Subject: Backup $status for $hostname\n");
+$smtp->datasend("Date: $date\n");
 $smtp->datasend("\n");
 $smtp->datasend(@REPORT);
 $smtp->dataend;
