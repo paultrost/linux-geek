@@ -76,11 +76,10 @@ GetOptions(
 );
 
 # Display help screen if -help option specified
-pod2usage(1) if ($help or !@ARGV);
+pod2usage(1) if ( $help or !@ARGV );
 
 # Display error if one of the required parameters isn't specified
-die
-"Not all required parameters specified, run '$0 --help' and check your arguments\n"
+die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
   unless ( 
         $device
     and $mountpoint
