@@ -88,6 +88,7 @@ foreach my $chipset (@chipset_names) {
     my $count_fan = 0;
     my @sensor_names = $sensors->list_sensors($chipset);
     foreach my $sensor (@sensor_names) {
+
         # Get CPU temps
         if ( $sensor =~ qr(Core) ) {
             if ($count_cpu == 0) {
@@ -101,6 +102,7 @@ foreach my $chipset (@chipset_names) {
             push( @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
               if ( $temp_c > $cpu_temp_warn );
         }
+
         # Get Motherboard temp
         if ( $sensor =~ qr(M/BTemp) ) {
             my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
@@ -108,6 +110,7 @@ foreach my $chipset (@chipset_names) {
             push( @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
               if ( $temp_c > $mb_temp_warn );
         }
+
         # Get Fan speeds
         if ( $sensor =~ /fan/ ) {
             if ($count_fan == 0) {
