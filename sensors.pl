@@ -30,21 +30,26 @@ use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
 
-# TODO
-
-# Add output flag so default behavior is no output
-# Add email report if @errors is true
-
 ######################
 # User set variables #
 ######################
 
+# Set temp warning thresholds
 my $cpu_temp_warn  = 65;
 my $mb_temp_warn   = 60;
-my $disk_temp_warn = 45;
+my $disk_temp_warn = 35;
 
 # What disks do you want to monitor temp on?
 my @disks = qx(ls /dev/sd*);
+
+###############################################
+# Set flag if -errorsonly option is specified #
+###############################################
+
+my $errorsonly;
+foreach (@ARGV) {
+    $errorsonly = 1 if $_ =~ '-errorsonly';
+}
 
 ########################################
 ## Stop if not called as the root user #
@@ -61,9 +66,9 @@ if ( !-x $hddtemp ) {
     die "'hddtemp' is not installed or is not executable.\n";
 }
 
-######################
-# Instantiate object #
-######################
+##############################################
+# Instantiate objects and gather information #
+##############################################
 
 my $sensors       = Hardware::SensorsParser->new;
 my @chipset_names = $sensors->list_chipsets;
@@ -77,6 +82,7 @@ my $os            = $info->os;
 
 my @errors;
 my @output;
+
 foreach my $chipset (@chipset_names) {
     my $count_cpu = 0;
     my $count_fan = 0;
@@ -89,17 +95,21 @@ foreach my $chipset (@chipset_names) {
                 push ( @output, "CPU/MB Temperature(s)" );
                 push ( @output, "---------------------" );
             }
-            my ($temp_c, $temp_f) = get_temp( $sensor, $chipset, $sensor, $cpu_temp_warn );
+            my ($temp_c, $temp_f) = get_temp( $sensor, $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
             $count_cpu = 1;
+            push( @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
+              if ( $temp_c > $cpu_temp_warn );
         }
         # Get Motherboard temp
         if ( $sensor =~ qr(M/BTemp) ) {
-            my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor, $mb_temp_warn );
+            my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
+            push( @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
+              if ( $temp_c > $mb_temp_warn );
         }
         # Get Fan speeds
-        if ( $sensor =~ qr(fan) ) {
+        if ( $sensor =~ /fan/ ) {
             if ($count_fan == 0) {
                 push ( @output, "Fan Speeds" );
                 push ( @output, "----------" );
@@ -110,7 +120,6 @@ foreach my $chipset (@chipset_names) {
         }
     }
 }
-#push ( @output, "\n" );
 
 # Get sensor values for disks
 push ( @output, "\n" );
@@ -119,39 +128,43 @@ push ( @output, "---------------------" );
 foreach my $disk (@disks) {
     chomp($disk);
     my ( $temp_c, $temp_f ) = get_disk_temp($disk);
-    push( @output, "$disk temperature: ${temp_c} C (${temp_f} F)" )
-        if ( $temp_c !~ 'N/A' );
+    if ( $temp_c !~ 'N/A' ) {
+        push( @output, "$disk temperature: ${temp_c} C (${temp_f} F)" );
+        push( @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C" )
+          if ( -e $disk and $temp_c > $disk_temp_warn);
+    }
 }
 
 ##################
 # Display Output #
 ##################
 
-print "\n";
-print "Operating System:\n", $os->name( long => 1 ) . "\n";
-print "\n";
-print "CPU:\n", scalar $cpu->identify . "\n";
-print "\n";
-print join( "\n", @output ), "\n";
-
+if (!$errorsonly) {
+    print "\n";
+    print "Operating System:\n", $os->name( long => 1 ) . "\n";
+    print "\n";
+    print "CPU:\n", scalar $cpu->identify . "\n";
+    print "\n";
+    print join( "\n", @output ), "\n";
+    print "\n";
+}
+    
 if (@errors) {
     print "\n";
     print join( "\n", @errors ), "\n";
+    print "\n";
 }
 
-print "\n";
 
 ###############
 # Subroutines #
 ###############
 
 sub get_temp {
-    my ( $realname, $sensor, $sensorname, $tempwarn ) = @_;
+    my ( $realname, $sensor, $sensorname ) = @_;
     my $temp_value = $sensors->get_sensor_value( $sensor, $sensorname, 'input' );
     my $temp_c = round($temp_value);
     my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
-    push( @errors, "ALERT: $realname temperature is $temp_c!" )
-      if ( $temp_c > $tempwarn );
     return ( $temp_c, $temp_f );
 }
 
@@ -168,7 +181,5 @@ sub get_disk_temp {
     return 'N/A' if $temp_c =~ qr(S.M.A.R.T. not available);
 
     my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
-    push( @errors, "ALERT: Drive $disk temperature is $temp_c" )
-        if ( -e $disk and $temp_c > $disk_temp_warn);
     return ( $temp_c, $temp_f );
 }
