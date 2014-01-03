@@ -1,3 +1,4 @@
 backup.pl - Script that uses rsync to back up folders to a locally mounted device like an external hard drive
-
 convert_zip_to_7z.pl - Convert .zip files to .7z files. It takes a single filename or a glob, *.zip
+convert_7z_to_zip.pl - Convert .7z files to .zip files. It takes a single filename or a glob, *.7z
+sensors.pl - Shows nicely formatted output from lm_sensors for fan speed, CPU temp, and drive temp. Variables have to be set per system.
