@@ -46,10 +46,7 @@ my @disks = qx(ls /dev/sd*);
 # Set flag if -errorsonly option is specified #
 ###############################################
 
-my $errorsonly;
-foreach (@ARGV) {
-    $errorsonly = 1 if $_ =~ '-errorsonly';
-}
+my $errorsonly = 1 if grep( /-errorsonly/, @ARGV );
 
 ########################################
 ## Stop if not called as the root user #
