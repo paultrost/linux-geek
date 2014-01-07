@@ -171,7 +171,7 @@ sub get_temp {
 sub get_fan_speed {
     my ( $realname, $sensor, $sensorname ) = @_;
     my $speed_value = round($sensors->get_sensor_value( $sensor, $sensorname, 'input' ));
-    return ( my $result = $speed_value eq '0' ? 'N/A' : $speed_value );
+    return ($speed_value eq '0') ? 'N/A' : $speed_value;
 }
     
 sub get_disk_temp {
