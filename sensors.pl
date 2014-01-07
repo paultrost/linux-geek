@@ -20,7 +20,7 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.2       #
+# Version: 0.2.1     #
 # 2014-01-03         #
 ######################
 
@@ -46,7 +46,7 @@ my @disks = qx(ls /dev/sd*);
 # Set flag if -errorsonly option is specified #
 ###############################################
 
-my $errorsonly = 1 if grep( /-errorsonly/, @ARGV );
+my $errorsonly = 1 if ( /-errorsonly/ ~~ @ARGV );
 
 ########################################
 ## Stop if not called as the root user #
@@ -163,8 +163,8 @@ if (@errors) {
 sub get_temp {
     my ( $realname, $sensor, $sensorname ) = @_;
     my $temp_value = $sensors->get_sensor_value( $sensor, $sensorname, 'input' );
-    my $temp_c = round($temp_value);
-    my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
+    my $temp_c     = round($temp_value);
+    my $temp_f     = round( ( $temp_c * 9 ) / 5 + 32 );
     return ( $temp_c, $temp_f );
 }
 
