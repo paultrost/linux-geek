@@ -40,7 +40,7 @@ my $mb_temp_warn   = 60;
 my $disk_temp_warn = 35;
 
 # What disks do you want to monitor temp on?
-my @disks = qx(ls /dev/sd*);
+my @disks = qx(ls /dev/sd[a-z]);
 
 ###############################################
 # Set flag if -errorsonly option is specified #
@@ -143,8 +143,8 @@ if (!$errorsonly) {
     print "\n";
     print "Operating System:\n", $os->name( long => 1 ) . "\n";
     print "\n";
-    print "CPU:\n", scalar $cpu->identify . "\n";
     print "\n";
+    print "CPU:\n", scalar $cpu->identify . "\n";
     print join( "\n", @output ), "\n";
     print "\n";
 }
@@ -176,9 +176,9 @@ sub get_fan_speed {
     
 sub get_disk_temp {
     chomp( my $disk   = shift );
-    chomp( my $temp_c = qx(hddtemp -n $disk --unit=C) );
+    chomp( my $temp_c = qx(hddtemp -n $disk --unit=C 2>/dev/null) );
     # Exit out if disk can't return temperature
-    return 'N/A' if $temp_c =~ qr(S.M.A.R.T. not available);
+    return 'N/A' if !$temp_c;
 
     my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
     return ( $temp_c, $temp_f );
