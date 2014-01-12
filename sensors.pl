@@ -146,7 +146,7 @@ if (!$errorsonly) {
     print "Operating System:\n", $os->name( long => 1 ) . "\n";
     print "\n";
     print "\n";
-    print "CPU:\n", scalar $cpu->identify . "\n";
+    print "CPU:\n", scalar $cpu->identify . "\n\n\n";
     print join( "\n", @output ), "\n";
     print "\n";
 }
