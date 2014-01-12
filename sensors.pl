@@ -84,6 +84,7 @@ foreach my $chipset (@chipset_names) {
     my $count_cpu = 0;
     my $count_fan = 0;
     my @sensor_names = $sensors->list_sensors($chipset);
+    @sensor_names = sort(@sensor_names);
     foreach my $sensor (@sensor_names) {
 
         # Get CPU temps
@@ -115,6 +116,7 @@ foreach my $chipset (@chipset_names) {
                 push ( @output, "----------" );
             }
             my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
+            $sensor =~ s/f/F/;
             push( @output, "$sensor speed: $speed_value RPM" );
             $count_fan = 1;
         }
@@ -178,7 +180,7 @@ sub get_disk_temp {
     chomp( my $disk   = shift );
     chomp( my $temp_c = qx(hddtemp -n $disk --unit=C 2>/dev/null) );
     # Exit out if disk can't return temperature
-    return 'N/A' if !$temp_c;
+    return 'N/A' if ( !$temp_c or $temp_c =~ qr(S.M.A.R.T. not available) );
 
     my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
     return ( $temp_c, $temp_f );
