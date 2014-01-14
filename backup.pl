@@ -30,6 +30,7 @@ use Net::SMTP::SSL;
 use Authen::SASL;
 use Getopt::Long;
 use Pod::Usage;
+use Sys::Hostname;
 
 #################################
 ## USER CONFIGURABLE VARIABLES ##
@@ -50,7 +51,7 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 # Set defaults for positional parameters
 my $help;
 my $smtp_port = '587';
-my $helo      = qx(hostname);
+my $helo      = hostname;
 my $device;
 my $mountpoint;
 my $fstype;
@@ -130,8 +131,8 @@ my $status;
 my $nounmount;
 my $error;
 my @REPORT;
+my $hostname = hostname;
 chomp( my $date     = qx(date) );
-chomp( my $hostname = qx(hostname) );
 
 #######################################################
 # Check to see that $device and $mountpoint are valid #
