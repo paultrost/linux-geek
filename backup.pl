@@ -20,7 +20,7 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.3.4     #
+# Version: 0.3.5     #
 # 2013-07-20         #
 ######################
 
@@ -43,6 +43,12 @@ my @rsyncopts = qw( -auv --delete);
 ########################################
 
 die "This script has to be run as root!\n" if ( $> != 0 );
+
+#############################################
+# Display help screen if no arguments given # 
+#############################################
+
+pod2usage(1) if !@ARGV;
 
 ###########################################################
 # Parse positional parameters for flags and set variables #
@@ -77,20 +83,11 @@ GetOptions(
 );
 
 # Display help screen if -help option specified
-pod2usage(1) if ( $help or !@ARGV );
+pod2usage(1) if $help;
 
 # Display error if one of the required parameters isn't specified
 die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
-  unless ( 
-        $device
-    and $mountpoint
-    and $fstype
-    and $email_addr
-    and $email_auth_addr
-    and $email_auth_pass
-    and $outbound_server
-    and $folders
-  );
+  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_addr and $email_auth_pass and $outbound_server and $folders );
 
 =head1 NAME
 
