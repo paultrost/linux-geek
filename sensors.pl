@@ -135,6 +135,9 @@ foreach my $disk (@disks) {
         push( @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C" )
           if ( -e $disk and $temp_c > $disk_temp_warn);
     }
+    else {
+        push ( @output, "$disk temperature: N/A" );
+    }
 }
 
 ##################
