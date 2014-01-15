@@ -21,7 +21,6 @@
 ######################
 # Author: Paul Trost #
 # Version: 0.3.5     #
-# 2013-07-20         #
 ######################
 
 use strict;
@@ -36,7 +35,7 @@ use Sys::Hostname;
 ## USER CONFIGURABLE VARIABLES ##
 #################################
 
-my @rsyncopts = qw( -auv --delete);
+my @rsyncopts = qw( -au --delete );
 
 ########################################
 ## Stop if not called as the root user #
@@ -58,6 +57,8 @@ pod2usage(1) if !@ARGV;
 my $help;
 my $smtp_port = '587';
 my $helo      = hostname;
+my $debug;
+my $debug_smtp;
 my $device;
 my $mountpoint;
 my $fstype;
@@ -72,6 +73,8 @@ GetOptions(
     'help|?'            => \$help,
     'smtp_port=s'       => \$smtp_port,
     'helo=s'            => \$helo,
+    'debug'             => \$debug,
+    'debug_smtp'        => \$debug_smtp,
     'device=s'          => \$device,
     'mountpoint=s'      => \$mountpoint,
     'fstype=s'          => \$fstype,
@@ -102,6 +105,8 @@ Options:
  --help            Display available and required options
  --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
  --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
+ --debug           Enable verbose output of rsync for debugging
+ --debug_smtp      Enable verbose screen output for SMTP transaction emailing the report
 
 Required Parameters:
  
@@ -162,6 +167,7 @@ else {
 # have output in a failure
 if ( !$drivemount ) {
     my @folders = split( / / , $folders );
+    push( @rsyncopts, '--verbose' ) if $debug;
     foreach my $folder (@folders) {
         if ( !-d $folder ) {
             push @REPORT, "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
@@ -172,14 +178,15 @@ if ( !$drivemount ) {
         # Actually run rsync
         my $output = qx(rsync @rsyncopts $folder $mountpoint);
 
-        if ( $output !~ /sent.*bytes.*received.*bytes/ ) {
+        if ( $? != 0 and $output !~ /sent.*bytes.*received.*bytes/ ) {
             push @REPORT, "Could not copy $folder to $mountpoint\n\n";
             push @REPORT, $output;
             $error++;
         }
         else {
             push @REPORT, "Now backing up folder '$folder':\n";
-            push @REPORT, "$output\n\n";
+            push( @REPORT, $output );
+            push( @REPORT, "\n\n" ) if $debug;
         }
     }
 }
@@ -200,7 +207,7 @@ elsif ($nounmount) {
     $error++;
 }
 else {
-    push @REPORT, "$device has been unmounted from $mountpoint\n\n";
+    push @REPORT, "\n$device has been unmounted from $mountpoint\n\n";
 }
 
 #################### 
@@ -225,12 +232,14 @@ else {
 my $smtp_method = $smtp_port eq '465' ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
 # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
-# which will output the full details of the SMTP conenction
+# which will output the full details of the SMTP connection
+my $debug_val = $debug_smtp ? 1 : 0;
 my $smtp = $smtp_method->new(
     $outbound_server,
     Port    => $smtp_port,
     Hello   => $helo,
     Timeout => 10,
+    Debug   => $debug_val,
 ) or die "Could not connect to $outbound_server using port $smtp_port\n$!\n";
 
 $smtp->auth( $email_auth_addr, $email_auth_pass );
