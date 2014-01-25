@@ -20,8 +20,6 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.2.1     #
-# 2014-01-03         #
 ######################
 
 use strict;
@@ -32,6 +30,10 @@ use Sys::Info;
 use Sys::Load qw/getload uptime/;
 use Sys::Hostname;
 use Time::Duration;
+use Term::ANSIColor qw(:constants);
+$Term::ANSIColor::AUTORESET = 1;
+
+my $version = '0.3';
 
 ######################
 # User set variables #
@@ -95,13 +97,13 @@ foreach my $chipset (@chipset_names) {
         if ( $sensor =~ qr(Core) ) {
             if ($count_cpu == 0) {
                 push ( @output, "\n" );
-                push ( @output, "CPU/MB Temperature(s)" );
+                push ( @output, BOLD BLUE "CPU/MB Temperature(s)" );
                 push ( @output, "---------------------" );
             }
             my ($temp_c, $temp_f) = get_temp( $sensor, $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
             $count_cpu = 1;
-            push( @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
+            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
               if ( $temp_c > $cpu_temp_warn );
         }
 
@@ -109,14 +111,14 @@ foreach my $chipset (@chipset_names) {
         if ( $sensor =~ qr(M/BTemp) ) {
             my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
-            push( @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
+            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
               if ( $temp_c > $mb_temp_warn );
         }
 
         # Get Fan speeds
         if ( $sensor =~ /fan/ ) {
             if ($count_fan == 0) {
-                push ( @output, "Fan Speeds" );
+                push ( @output, BOLD BLUE "Fan Speeds" );
                 push ( @output, "----------" );
             }
             my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
@@ -129,14 +131,14 @@ foreach my $chipset (@chipset_names) {
 
 # Get sensor values for disks
 push ( @output, "\n" );
-push ( @output, "Drive Temperature(s):" );
+push ( @output, BOLD BLUE "Drive Temperature(s):" );
 push ( @output, "---------------------" );
 foreach my $disk (@disks) {
     chomp($disk);
     my ( $temp_c, $temp_f ) = get_disk_temp($disk);
     if ( $temp_c !~ 'N/A' ) {
         push( @output, "$disk temperature: ${temp_c} C (${temp_f} F)" );
-        push( @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C" )
+        push( @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C" )
           if ( -e $disk and $temp_c > $disk_temp_warn);
     }
     else {
@@ -150,10 +152,10 @@ foreach my $disk (@disks) {
 
 if (!$errorsonly) {
     print "\n";
-    print "Hostname: " . hostname . "\n";
-    print "CPU: ", scalar $cpu->identify . "\n";
-    print "System uptime: ", duration($uptime), "\n";
-    print "System load: ", $load, "\n";
+    print BOLD GREEN "Hostname: " . BOLD YELLOW hostname . "\n";
+    print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
+    print BOLD GREEN "System load: ", BOLD YELLOW $load, "\n";
+    print BOLD GREEN "CPU: ", BOLD YELLOW scalar $cpu->identify . "\n";
     print join( "\n", @output ), "\n";
     print "\n";
 }
