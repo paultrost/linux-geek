@@ -29,6 +29,9 @@ use warnings;
 use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
+use Sys::Load qw/getload uptime/;
+use Sys::Hostname;
+use Time::Duration;
 
 ######################
 # User set variables #
@@ -71,7 +74,7 @@ my $sensors       = Hardware::SensorsParser->new;
 my @chipset_names = $sensors->list_chipsets;
 my $info          = Sys::Info->new;
 my $cpu           = $info->device('CPU');
-my $os            = $info->os;
+my $uptime        = int(uptime);
 
 #########################
 # Process sensor values #
@@ -146,10 +149,11 @@ foreach my $disk (@disks) {
 
 if (!$errorsonly) {
     print "\n";
-    print "Operating System:\n", $os->name( long => 1 ) . "\n";
-    print "\n";
-    print "\n";
-    print "CPU:\n", scalar $cpu->identify . "\n\n\n";
+    print "Hostname: " . hostname . "\n";
+    print "CPU: ", scalar $cpu->identify . "\n";
+    print "System uptime: ", duration($uptime), "\n";
+    print "System load: ", (getload())[0], "\n";
+    print "\n\n";
     print join( "\n", @output ), "\n";
     print "\n";
 }
