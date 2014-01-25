@@ -89,12 +89,11 @@ my @output;
 foreach my $chipset (@chipset_names) {
     my $count_cpu = 0;
     my $count_fan = 0;
-    my @sensor_names = $sensors->list_sensors($chipset);
-    @sensor_names = sort(@sensor_names);
+    my @sensor_names = sort($sensors->list_sensors($chipset));
     foreach my $sensor (@sensor_names) {
 
         # Get CPU temps
-        if ( $sensor =~ qr(Core) ) {
+        if ( $sensor =~ /Core/ ) {
             if ($count_cpu == 0) {
                 push ( @output, "\n" );
                 push ( @output, BOLD BLUE "CPU/MB Temperature(s)" );
