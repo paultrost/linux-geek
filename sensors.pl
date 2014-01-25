@@ -75,6 +75,7 @@ my @chipset_names = $sensors->list_chipsets;
 my $info          = Sys::Info->new;
 my $cpu           = $info->device('CPU');
 my $uptime        = int(uptime);
+my $load	  = (getload())[0];
 
 #########################
 # Process sensor values #
@@ -152,8 +153,7 @@ if (!$errorsonly) {
     print "Hostname: " . hostname . "\n";
     print "CPU: ", scalar $cpu->identify . "\n";
     print "System uptime: ", duration($uptime), "\n";
-    print "System load: ", (getload())[0], "\n";
-    print "\n\n";
+    print "System load: ", $load, "\n";
     print join( "\n", @output ), "\n";
     print "\n";
 }
