@@ -78,7 +78,7 @@ my @chipset_names = $sensors->list_chipsets;
 my $info          = Sys::Info->new;
 my $cpu           = $info->device('CPU');
 my $uptime        = int(uptime);
-my $load	  = (getload())[0];
+my $load    	  = (getload())[0];
 
 #########################
 # Process sensor values #
@@ -90,7 +90,7 @@ my @output;
 foreach my $chipset (@chipset_names) {
     my $count_cpu = 0;
     my $count_fan = 0;
-    my @sensor_names = sort($sensors->list_sensors($chipset));
+    my @sensor_names = sort( $sensors->list_sensors($chipset) );
     foreach my $sensor (@sensor_names) {
 
         # Get CPU temps
@@ -100,7 +100,7 @@ foreach my $chipset (@chipset_names) {
                 push ( @output, BOLD BLUE "CPU/MB Temperature(s)" );
                 push ( @output, "---------------------" );
             }
-            my ($temp_c, $temp_f) = get_temp( $sensor, $chipset, $sensor );
+            my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
             $count_cpu = 1;
             push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)" )
@@ -117,9 +117,9 @@ foreach my $chipset (@chipset_names) {
 
         # Get Fan speeds
         if ( $sensor =~ /fan/ ) {
-            if ($count_fan == 0) {
-                push ( @output, BOLD BLUE "Fan Speeds" );
-                push ( @output, "----------" );
+            if ( $count_fan == 0 ) {
+                push( @output, BOLD BLUE "Fan Speeds" );
+                push( @output, "----------" );
             }
             my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
             $sensor =~ s/f/F/;
@@ -139,10 +139,10 @@ foreach my $disk (@disks) {
     if ( $temp_c !~ 'N/A' ) {
         push( @output, "$disk temperature: ${temp_c} C (${temp_f} F)" );
         push( @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)" )
-          if ( -e $disk and $temp_c > $disk_temp_warn);
+          if ( -e $disk and $temp_c > $disk_temp_warn );
     }
     else {
-        push ( @output, "$disk temperature: N/A" );
+        push( @output, "$disk temperature: N/A" );
     }
 }
 
@@ -150,7 +150,7 @@ foreach my $disk (@disks) {
 # Display Output #
 ##################
 
-if (!$errorsonly) {
+if ( !$errorsonly ) {
     print "\n";
     print BOLD GREEN "Hostname: " . BOLD YELLOW hostname . "\n";
     print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
@@ -181,13 +181,14 @@ sub get_temp {
 
 sub get_fan_speed {
     my ( $realname, $sensor, $sensorname ) = @_;
-    my $speed_value = round($sensors->get_sensor_value( $sensor, $sensorname, 'input' ));
-    return ($speed_value eq '0') ? 'N/A' : $speed_value;
+    my $speed_value = round( $sensors->get_sensor_value( $sensor, $sensorname, 'input' ) );
+    return ( $speed_value eq '0' ) ? 'N/A' : $speed_value;
 }
-    
+
 sub get_disk_temp {
     chomp( my $disk   = shift );
     chomp( my $temp_c = qx(hddtemp -n $disk --unit=C 2>/dev/null) );
+
     # Exit out if disk can't return temperature
     return 'N/A' if ( !$temp_c or $temp_c =~ qr(S.M.A.R.T. not available) );
 
