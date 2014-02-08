@@ -32,8 +32,9 @@ use Sys::Hostname;
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
+no if $] >= 5.018, warnings => "experimental";
 
-my $version = '0.3';
+my $version = '0.3.1';
 
 ######################
 # User set variables #
