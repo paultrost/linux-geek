@@ -103,7 +103,7 @@ foreach my $chipset (@chipset_names) {
             my ($temp_c, $temp_f) = get_temp( $sensor, $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
             $count_cpu = 1;
-            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
+            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)" )
               if ( $temp_c > $cpu_temp_warn );
         }
 
@@ -111,7 +111,7 @@ foreach my $chipset (@chipset_names) {
         if ( $sensor =~ qr(M/BTemp) ) {
             my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
             push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
-            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C!" )
+            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)" )
               if ( $temp_c > $mb_temp_warn );
         }
 
@@ -138,7 +138,7 @@ foreach my $disk (@disks) {
     my ( $temp_c, $temp_f ) = get_disk_temp($disk);
     if ( $temp_c !~ 'N/A' ) {
         push( @output, "$disk temperature: ${temp_c} C (${temp_f} F)" );
-        push( @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C" )
+        push( @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)" )
           if ( -e $disk and $temp_c > $disk_temp_warn);
     }
     else {
