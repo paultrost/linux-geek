@@ -32,9 +32,9 @@ use Sys::Hostname;
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
-no if $] >= 5.018, warnings => "experimental";
+no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
 
-my $version = '0.3.1';
+my $version = '0.3.2';
 
 ######################
 # User set variables #
@@ -43,9 +43,10 @@ my $version = '0.3.1';
 # Set temp warning thresholds
 my $cpu_temp_warn  = 65;
 my $mb_temp_warn   = 60;
-my $disk_temp_warn = 35;
+my $disk_temp_warn = 40;
 
 # What disks do you want to monitor temp on?
+# This can be a quoted list like "/dev/sda", "/dev/sdb" as well
 my @disks = qx(ls /dev/sd[a-z]);
 
 ###############################################
@@ -65,9 +66,7 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 ##############################################
 
 chomp( my $hddtemp = qx(which hddtemp) );
-if ( !-x $hddtemp ) {
-    die "'hddtemp' is not installed or is not executable.\n";
-}
+die "'hddtemp' is not installed or is not executable.\n" if !-x $hddtemp;
 
 ##############################################
 # Instantiate objects and gather information #
@@ -182,7 +181,7 @@ sub get_temp {
 sub get_fan_speed {
     my ( $realname, $sensor, $sensorname ) = @_;
     my $speed_value = round( $sensors->get_sensor_value( $sensor, $sensorname, 'input' ) );
-    return ( $speed_value eq '0' ) ? 'N/A' : $speed_value;
+    return ( $speed_value eq '0' ) ? 'N/A' : $speed_value; # return N/A or $speed_value
 }
 
 sub get_disk_temp {
