@@ -20,7 +20,7 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.4       #
+# Version: 0.4.1     #
 ######################
 
 use strict;
@@ -56,7 +56,7 @@ pod2usage(1) if !@ARGV;
 # Set defaults for positional parameters
 my $help;
 my $smtp_port = '587';
-my $helo      = hostname;
+my $helo      = hostname();
 my $debug;
 my $debug_smtp;
 my $device;
@@ -134,7 +134,7 @@ my $nounmount;
 my $error;
 my @REPORT;
 my $hostname = hostname;
-chomp( my $date     = qx(date) );
+chomp( my $date = qx(date) );
 
 #######################################################
 # Check to see that $device and $mountpoint are valid #
@@ -252,5 +252,5 @@ $smtp->datasend("Subject: Backup $status for $hostname\n");
 $smtp->datasend("Date: $date\n");
 $smtp->datasend("\n");
 $smtp->datasend(@REPORT);
-$smtp->dataend;
-$smtp->quit;
+$smtp->dataend();
+$smtp->quit();
