@@ -20,7 +20,7 @@
 
 ######################
 # Author: Paul Trost #
-# Version: 0.4.1     #
+# Version: 0.4.2     #
 ######################
 
 use strict;
@@ -133,7 +133,7 @@ my $status;
 my $nounmount;
 my $error;
 my @REPORT;
-my $hostname = hostname;
+my $hostname = hostname();
 chomp( my $date = qx(date) );
 
 #######################################################
@@ -218,12 +218,7 @@ else {
 # error messages beginning with * were found
 chomp( $date = qx(date) );
 push @REPORT, "Backup finished at $date\n";
-if ($error) {
-    $status = 'failed or couldn\'t rsync a specified directory';
-}
-else {
-    $status = 'successful';
-}
+my $status = $error ? 'failed or couldn\'t rsync a specified directory' : 'successful';
 
 ######################################################
 # Send backup successful/failed message to recipient #
