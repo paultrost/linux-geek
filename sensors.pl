@@ -34,7 +34,7 @@ use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
 
-my $version = '0.3.2';
+my $version = '0.4';
 
 ######################
 # User set variables #
@@ -47,7 +47,7 @@ my $disk_temp_warn = 40;
 
 # What disks do you want to monitor temp on?
 # This can be a quoted list like "/dev/sda", "/dev/sdb" as well
-my @disks = qx(ls /dev/sd[a-z]);
+chomp( my @disks = qx(ls /dev/sd[a-z]) );
 
 ###############################################
 # Set flag if -errorsonly option is specified #
@@ -65,8 +65,12 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 # Ensure prerequisite programs are installed #
 ##############################################
 
-chomp( my $hddtemp = qx(which hddtemp) );
-die "'hddtemp' is not installed or is not executable.\n" if !-x $hddtemp;
+my @required_progs = qw(hddtemp smartctl);
+foreach my $prog (@required_progs) {
+    chomp( my $prog_path = qx(which $prog 2>/dev/null) );
+    die "$prog is not installed or is not executable. Please install and run $0 again.\n"
+      if ( !$prog_path or !-x $prog_path );
+}
 
 ##############################################
 # Instantiate objects and gather information #
@@ -130,18 +134,21 @@ foreach my $chipset (@chipset_names) {
 
 # Get sensor values for disks
 push ( @output, "\n" );
-push ( @output, BOLD BLUE "Drive Temperature(s):" );
+push ( @output, BOLD BLUE "Drive Temperature(s) and Status:" );
 push ( @output, "---------------------" );
 foreach my $disk (@disks) {
     chomp($disk);
+    my $disk_health = get_disk_health($disk);
     my ( $temp_c, $temp_f ) = get_disk_temp($disk);
     if ( $temp_c !~ 'N/A' ) {
-        push( @output, "$disk temperature: ${temp_c} C (${temp_f} F)" );
+        push( @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health" );
         push( @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)" )
           if ( -e $disk and $temp_c > $disk_temp_warn );
+        push( @errors, BOLD RED "ALERT: $disk may be dying, S.M.A.R.T. status $disk_health" )
+          if ( $disk_health !~ 'PASSED' );
     }
     else {
-        push( @output, "$disk temperature: N/A" );
+        push( @output, "$disk Temperature: N/A" );
     }
 }
 
@@ -151,10 +158,10 @@ foreach my $disk (@disks) {
 
 if ( !$errorsonly ) {
     print "\n";
-    print BOLD GREEN "Hostname: " . BOLD YELLOW hostname . "\n";
+    print BOLD GREEN "Hostname:      ", BOLD YELLOW hostname . "\n";
     print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
-    print BOLD GREEN "System load: ", BOLD YELLOW $load, "\n";
-    print BOLD GREEN "CPU: ", BOLD YELLOW scalar $cpu->identify . "\n";
+    print BOLD GREEN "System load:   ", BOLD YELLOW $load, "\n";
+    print BOLD GREEN "CPU:           ", BOLD YELLOW scalar $cpu->identify . "\n";
     print join( "\n", @output ), "\n";
     print "\n";
 }
@@ -193,4 +200,18 @@ sub get_disk_temp {
 
     my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
     return ( $temp_c, $temp_f );
+}
+
+sub get_disk_health {
+    chomp( my $disk = shift );
+    chomp( my $health = qx(smartctl -H $disk) );
+    if ( $health =~ /PASSED|FAILED/ ) {
+        $health =~ s/.*result: //s;
+        chomp($health);
+        return BOLD YELLOW $health if $health =~ 'PASSED';
+        return BOLD RED $health if $health =~ 'FAILED';
+    } 
+    else {
+        return 'N/A';
+    }
 }
