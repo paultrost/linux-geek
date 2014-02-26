@@ -129,7 +129,6 @@ Example:
 # Additional variables needed #
 ###############################
 
-my $status;
 my $nounmount;
 my $error;
 my @REPORT;
@@ -185,8 +184,8 @@ if ( !$drivemount ) {
         }
         else {
             push @REPORT, "Now backing up folder '$folder':\n";
-            push( @REPORT, $output );
-            push( @REPORT, "\n\n" ) if $debug;
+            push @REPORT, $output;
+            push @REPORT, "\n\n" if $debug;
         }
     }
 }
@@ -198,7 +197,7 @@ if ( !$drivemount ) {
 # Unmount $device, but only if this script was what mounted it
 $drivemount = qx(umount $mountpoint 2>&1) if !$nounmount;
 
-if ( $drivemount and !$nounmount ) {
+if ( $drivemount && !$nounmount ) {
     push @REPORT, "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
     $error++;
 }
