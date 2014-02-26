@@ -69,7 +69,7 @@ my @required_progs = qw(hddtemp smartctl);
 foreach my $prog (@required_progs) {
     chomp( my $prog_path = qx(which $prog 2>/dev/null) );
     die "$prog is not installed or is not executable. Please install and run $0 again.\n"
-      if ( !$prog_path or !-x $prog_path );
+      if ( !$prog_path || !-x $prog_path );
 }
 
 ##############################################
@@ -81,7 +81,7 @@ my @chipset_names = $sensors->list_chipsets;
 my $info          = Sys::Info->new;
 my $cpu           = $info->device('CPU');
 my $uptime        = int(uptime);
-my $load    	  = (getload())[0];
+my $load          = (getload())[0];
 
 #########################
 # Process sensor values #
@@ -99,34 +99,34 @@ foreach my $chipset (@chipset_names) {
         # Get CPU temps
         if ( $sensor =~ /Core/ ) {
             if ($count_cpu == 0) {
-                push ( @output, "\n" );
-                push ( @output, BOLD BLUE "CPU/MB Temperature(s)" );
-                push ( @output, "---------------------" );
+                push @output, "\n";
+                push @output, BOLD BLUE "CPU/MB Temperature(s)";
+                push @output, "---------------------";
             }
             my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
-            push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
+            push @output, "$sensor temperature: ${temp_c} C (${temp_f} F)";
             $count_cpu = 1;
-            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)" )
+            push @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
               if ( $temp_c > $cpu_temp_warn );
         }
 
         # Get Motherboard temp
-        if ( $sensor =~ qr(M/BTemp) ) {
+        if ( $sensor =~ m{M/BTemp} ) {
             my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
-            push( @output, "$sensor temperature: ${temp_c} C (${temp_f} F)" );
-            push( @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)" )
+            push @output, "$sensor temperature: ${temp_c} C (${temp_f} F)";
+            push @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
               if ( $temp_c > $mb_temp_warn );
         }
 
         # Get Fan speeds
         if ( $sensor =~ /fan/ ) {
             if ( $count_fan == 0 ) {
-                push( @output, BOLD BLUE "Fan Speeds" );
-                push( @output, "----------" );
+                push @output, BOLD BLUE "Fan Speeds";
+                push @output, "----------" ;
             }
             my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
             $sensor =~ s/f/F/;
-            push( @output, "$sensor speed: $speed_value RPM" );
+            push @output, "$sensor speed: $speed_value RPM";
             $count_fan = 1;
         }
     }
@@ -141,14 +141,14 @@ foreach my $disk (@disks) {
     my $disk_health = get_disk_health($disk);
     my ( $temp_c, $temp_f ) = get_disk_temp($disk);
     if ( $temp_c !~ 'N/A' ) {
-        push( @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health" );
-        push( @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)" )
+        push @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health";
+        push @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
           if ( -e $disk and $temp_c > $disk_temp_warn );
-        push( @errors, BOLD RED "ALERT: $disk may be dying, S.M.A.R.T. status $disk_health" )
+        push @errors, BOLD RED "ALERT: $disk may be dying, S.M.A.R.T. status $disk_health"
           if ( $disk_health !~ 'PASSED' );
     }
     else {
-        push( @output, "$disk Temperature: N/A" );
+        push @output, "$disk Temperature: N/A";
     }
 }
 
@@ -158,7 +158,7 @@ foreach my $disk (@disks) {
 
 if ( !$errorsonly ) {
     print "\n";
-    print BOLD GREEN "Hostname:      ", BOLD YELLOW hostname . "\n";
+    print BOLD GREEN "Hostname:      ", BOLD YELLOW hostname() . "\n";
     print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
     print BOLD GREEN "System load:   ", BOLD YELLOW $load, "\n";
     print BOLD GREEN "CPU:           ", BOLD YELLOW scalar $cpu->identify . "\n";
@@ -196,7 +196,7 @@ sub get_disk_temp {
     chomp( my $temp_c = qx(hddtemp -n $disk --unit=C 2>/dev/null) );
 
     # Exit out if disk can't return temperature
-    return 'N/A' if ( !$temp_c or $temp_c =~ qr(S.M.A.R.T. not available) );
+    return 'N/A' if ( !$temp_c || $temp_c =~ qr/S.M.A.R.T. not available/ );
 
     my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
     return ( $temp_c, $temp_f );
@@ -209,9 +209,7 @@ sub get_disk_health {
         $health =~ s/.*result: //s;
         chomp($health);
         return BOLD YELLOW $health if $health =~ 'PASSED';
-        return BOLD RED $health if $health =~ 'FAILED';
-    } 
-    else {
-        return 'N/A';
+        return BOLD RED $health    if $health =~ 'FAILED';
     }
+    return 'N/A';
 }
