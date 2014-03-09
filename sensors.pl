@@ -163,6 +163,7 @@ if ( !$errorsonly ) {
     print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
     print BOLD GREEN "System load:   ", BOLD YELLOW $load, "\n";
     print BOLD GREEN "CPU:           ", BOLD YELLOW scalar $cpu->identify . "\n";
+    print "\n\n" if $] < 5.018; #extra spacing needed for Perl < 5.18
     print join( "\n", @output ), "\n";
     print "\n";
 }
