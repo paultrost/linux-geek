@@ -34,7 +34,7 @@ use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
 
-my $version = '0.4';
+my $version = '0.5';
 
 ######################
 # User set variables #
@@ -65,11 +65,11 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 # Ensure prerequisite programs are installed #
 ##############################################
 
-my @required_progs = qw(hddtemp smartctl);
+my @required_progs = qw(smartctl);
 foreach my $prog (@required_progs) {
     chomp( my $prog_path = qx(which $prog 2>/dev/null) );
     die "$prog is not installed or is not executable. Please install and run $0 again.\n"
-      if ( !$prog_path || !-x $prog_path );
+      if ( !$prog_path or !-x $prog_path );
 }
 
 ##############################################
@@ -138,8 +138,9 @@ push ( @output, BOLD BLUE "Drive Temperature(s) and Status:" );
 push ( @output, "---------------------" );
 foreach my $disk (@disks) {
     chomp($disk);
-    my $disk_health = get_disk_health($disk);
-    my ( $temp_c, $temp_f ) = get_disk_temp($disk);
+    my $smart_info = qx(smartctl -a $disk);
+    my $disk_health = get_disk_health( $disk, $smart_info );
+    my ( $temp_c, $temp_f ) = get_disk_temp( $disk, $smart_info );
     if ( $temp_c !~ 'N/A' ) {
         push @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health";
         push @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
@@ -192,24 +193,38 @@ sub get_fan_speed {
 }
 
 sub get_disk_temp {
-    chomp( my $disk   = shift );
-    chomp( my $temp_c = qx(hddtemp -n $disk --unit=C 2>/dev/null) );
+    my $disk = shift;
+    my $smart_info = shift;
+    my ($temp_c) = $smart_info =~ /(Temperature_Celsius.*\n)/;
 
-    # Exit out if disk can't return temperature
-    return 'N/A' if ( !$temp_c || $temp_c =~ qr/S.M.A.R.T. not available/ );
-
-    my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
-    return ( $temp_c, $temp_f );
+    if ($temp_c) {
+        $temp_c =~ s/ //g;
+        $temp_c =~ s/.*-//;
+        $temp_c =~ s/\(.*\)//;
+        chomp($temp_c);
+    }
+    
+    if ( !$temp_c or $smart_info =~ qr/S.M.A.R.T. not available/ ) {
+        return 'N/A';
+    }
+    else {
+        my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
+        return ( $temp_c, $temp_f );
+    }
 }
 
 sub get_disk_health {
-    chomp( my $disk = shift );
-    chomp( my $health = qx(smartctl -H $disk) );
-    if ( $health =~ /PASSED|FAILED/ ) {
+    my $disk = shift;
+    my $smart_info = shift;
+    my ($health) = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
+
+    if ( $health and $health =~ /PASSED|FAILED/ ) {
         $health =~ s/.*result: //s;
         chomp($health);
         return BOLD YELLOW $health if $health =~ 'PASSED';
         return BOLD RED $health    if $health =~ 'FAILED';
     }
-    return 'N/A';
+    else {
+        return 'N/A';
+    }
 }
