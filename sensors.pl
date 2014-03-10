@@ -33,8 +33,9 @@ use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
+use Data::Dumper;
 
-my $version = '0.5';
+my $version = '0.6';
 
 ######################
 # User set variables #
@@ -136,10 +137,12 @@ foreach my $chipset (@chipset_names) {
 push ( @output, "\n" );
 push ( @output, BOLD BLUE "Drive Temperature(s) and Status:" );
 push ( @output, "---------------------" );
+my $disk_models;
 foreach my $disk (@disks) {
     chomp($disk);
     my $smart_info = qx(smartctl -a $disk);
     my $disk_health = get_disk_health( $disk, $smart_info );
+    $disk_models = $disk_models . get_disk_model($disk, $smart_info);
     my ( $temp_c, $temp_f ) = get_disk_temp( $disk, $smart_info );
     if ( $temp_c !~ 'N/A' ) {
         push @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health";
@@ -163,6 +166,7 @@ if ( !$errorsonly ) {
     print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
     print BOLD GREEN "System load:   ", BOLD YELLOW $load, "\n";
     print BOLD GREEN "CPU:           ", BOLD YELLOW scalar $cpu->identify . "\n";
+    print BOLD GREEN "Disks:         ", BOLD YELLOW "\n$disk_models";
     print "\n\n" if $] < 5.018; #extra spacing needed for Perl < 5.18
     print join( "\n", @output ), "\n";
     print "\n";
@@ -228,4 +232,14 @@ sub get_disk_health {
     else {
         return 'N/A';
     }
+}
+
+sub get_disk_model {
+    my $disk = shift;
+    my $smart_info = shift;
+    my ($model) = $smart_info =~ /(Device\ Model.*\n)/;
+    $model =~ s/.*:\ //s;
+    $model =~ s/^\s+|\s+$//g ;
+
+    return "$disk: $model\n";
 }
