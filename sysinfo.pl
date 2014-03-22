@@ -18,9 +18,10 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.                #
 ##############################################################################
 
-######################
-# Author: Paul Trost #
-######################
+#####################################
+# Author: Paul Trost                #
+# Email: paul.trost@trostfamily.org #
+#####################################
 
 use strict;
 use warnings;
@@ -36,7 +37,7 @@ use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
 
-my $version = '0.7';
+my $version = '0.7.1';
 
 ######################
 # User set variables #
@@ -111,9 +112,9 @@ foreach my $chipset (@chipset_names) {
             }
             my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
             push @output, "$sensor temperature: ${temp_c} C (${temp_f} F)";
-            $count_cpu = 1;
             push @errors, BOLD RED "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
               if ( $temp_c > $cpu_temp_warn );
+            $count_cpu = 1;
         }
 
         # Get Motherboard temp
@@ -205,9 +206,9 @@ sub get_fan_speed {
 }
 
 sub get_disk_temp {
-    my $disk = shift;
+    my $disk       = shift;
     my $smart_info = shift;
-    my ($temp_c) = $smart_info =~ /(Temperature_Celsius.*\n)/;
+    my ($temp_c)   = $smart_info =~ /(Temperature_Celsius.*\n)/;
 
     if ($temp_c) {
         $temp_c =~ s/ //g;
@@ -226,9 +227,9 @@ sub get_disk_temp {
 }
 
 sub get_disk_health {
-    my $disk = shift;
+    my $disk       = shift;
     my $smart_info = shift;
-    my ($health) = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
+    my ($health)   = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
 
     if ( $health and $health =~ /PASSED|FAILED/ ) {
         $health =~ s/.*result: //s;
