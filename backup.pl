@@ -18,10 +18,11 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.                #
 ##############################################################################
 
-######################
-# Author: Paul Trost #
-# Version: 0.4.2     #
-######################
+#####################################
+# Author: Paul Trost                #
+# Email: paul.trost@trostfamily.org #
+# Version: 0.4.2                    #
+#####################################
 
 use strict;
 use warnings;
@@ -217,18 +218,18 @@ else {
 # error messages beginning with * were found
 chomp( $date = qx(date) );
 push @REPORT, "Backup finished at $date\n";
-my $status = $error ? 'failed or couldn\'t rsync a specified directory' : 'successful';
+my $status = ($error) ? "failed or couldn't rsync a specified directory" : 'successful';
 
 ######################################################
 # Send backup successful/failed message to recipient #
 ######################################################
 
-my $smtp_method = $smtp_port eq '465' ? 'Net::SMTP::SSL' : 'Net::SMTP';
+my $smtp_method = ( $smtp_port eq '465' ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
 # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
 # which will output the full details of the SMTP connection
-my $debug_val = $debug_smtp ? 1 : 0;
-my $smtp = $smtp_method->new(
+my $debug_val = ($debug_smtp) ? 1 : 0;
+my $smtp      = $smtp_method->new(
     $outbound_server,
     Port    => $smtp_port,
     Hello   => $helo,
