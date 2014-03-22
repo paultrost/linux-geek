@@ -26,16 +26,17 @@ use strict;
 use warnings;
 use Hardware::SensorsParser;
 use Math::Round;
+use Linux::Distribution qw(distribution_name distribution_version);
 use Sys::Info;
 use Sys::Load qw/getload uptime/;
 use Sys::Hostname;
+use Sys::MemInfo qw(totalmem freemem totalswap);
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
-use Data::Dumper;
 
-my $version = '0.6';
+my $version = '0.7';
 
 ######################
 # User set variables #
@@ -81,8 +82,12 @@ my $sensors       = Hardware::SensorsParser->new;
 my @chipset_names = $sensors->list_chipsets;
 my $info          = Sys::Info->new;
 my $cpu           = $info->device('CPU');
-my $uptime        = int(uptime);
+my $uptime        = int uptime();
 my $load          = (getload())[0];
+my $hostname      = hostname();
+my $os            = distribution_name() . ' ' . distribution_version();
+my $free_mem      = int( freemem() / 1024 / 1024 );
+my $total_mem     = int( totalmem() / 1024 / 1024 );
 
 #########################
 # Process sensor values #
@@ -142,7 +147,7 @@ foreach my $disk (@disks) {
     chomp($disk);
     my $smart_info = qx(smartctl -a $disk);
     my $disk_health = get_disk_health( $disk, $smart_info );
-    $disk_models = $disk_models . get_disk_model($disk, $smart_info);
+    $disk_models .= get_disk_model($disk, $smart_info);
     my ( $temp_c, $temp_f ) = get_disk_temp( $disk, $smart_info );
     if ( $temp_c !~ 'N/A' ) {
         push @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health";
@@ -162,10 +167,12 @@ foreach my $disk (@disks) {
 
 if ( !$errorsonly ) {
     print "\n";
-    print BOLD GREEN "Hostname:      ", BOLD YELLOW hostname() . "\n";
+    print BOLD GREEN "Hostname:      ", BOLD YELLOW $hostname, "\n";
+    print BOLD GREEN "OS:            ", BOLD YELLOW $os, "\n";
+    print BOLD GREEN "CPU:           ", BOLD YELLOW scalar $cpu->identify . "\n";
+    print BOLD GREEN "Memory:        ", BOLD YELLOW "${free_mem}M / ${total_mem}M \n";
     print BOLD GREEN "System uptime: ", BOLD YELLOW duration($uptime), "\n";
     print BOLD GREEN "System load:   ", BOLD YELLOW $load, "\n";
-    print BOLD GREEN "CPU:           ", BOLD YELLOW scalar $cpu->identify . "\n";
     print BOLD GREEN "Disks:         ", BOLD YELLOW "\n$disk_models";
     print "\n\n" if $] < 5.018; #extra spacing needed for Perl < 5.18
     print join( "\n", @output ), "\n";
@@ -194,7 +201,7 @@ sub get_temp {
 sub get_fan_speed {
     my ( $realname, $sensor, $sensorname ) = @_;
     my $speed_value = round( $sensors->get_sensor_value( $sensor, $sensorname, 'input' ) );
-    return ( $speed_value eq '0' ) ? 'N/A' : $speed_value; # return N/A or $speed_value
+    return ( $speed_value eq '0' ) ? 'N/A' : $speed_value;
 }
 
 sub get_disk_temp {
