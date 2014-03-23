@@ -18,10 +18,11 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.                #
 ##############################################################################
 
-#####################################
-# Author: Paul Trost                #
-# Email: paul.trost@trostfamily.org #
-#####################################
+######################################
+# Author: Paul Trost                 #
+# Email:  paul.trost@trostfamily.org #
+# Version 0.7.2                      #
+######################################
 
 use strict;
 use warnings;
@@ -36,8 +37,6 @@ use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => "experimental"; # turn off smartmatch warnings
-
-my $version = '0.7.1';
 
 ######################
 # User set variables #
@@ -98,8 +97,8 @@ my @errors;
 my @output;
 
 foreach my $chipset (@chipset_names) {
-    my $count_cpu = 0;
-    my $count_fan = 0;
+    my $count_cpu    = 0;
+    my $count_fan    = 0;
     my @sensor_names = sort( $sensors->list_sensors($chipset) );
     foreach my $sensor (@sensor_names) {
 
@@ -146,10 +145,10 @@ push ( @output, "---------------------" );
 my $disk_models;
 foreach my $disk (@disks) {
     chomp($disk);
-    my $smart_info = qx(smartctl -a $disk);
-    my $disk_health = get_disk_health( $disk, $smart_info );
-    $disk_models .= get_disk_model($disk, $smart_info);
-    my ( $temp_c, $temp_f ) = get_disk_temp( $disk, $smart_info );
+    my $smart_info  = qx(smartctl -a $disk);
+    my $disk_health = get_disk_health($smart_info);
+    $disk_models .= get_disk_model( $disk, $smart_info );
+    my ( $temp_c, $temp_f ) = get_disk_temp($smart_info);
     if ( $temp_c !~ 'N/A' ) {
         push @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: $disk_health";
         push @errors, BOLD RED "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
@@ -206,7 +205,6 @@ sub get_fan_speed {
 }
 
 sub get_disk_temp {
-    my $disk       = shift;
     my $smart_info = shift;
     my ($temp_c)   = $smart_info =~ /(Temperature_Celsius.*\n)/;
 
@@ -227,7 +225,6 @@ sub get_disk_temp {
 }
 
 sub get_disk_health {
-    my $disk       = shift;
     my $smart_info = shift;
     my ($health)   = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
 
@@ -243,11 +240,10 @@ sub get_disk_health {
 }
 
 sub get_disk_model {
-    my $disk = shift;
-    my $smart_info = shift;
+    my ( $disk, $smart_info ) = @_;
     my ($model) = $smart_info =~ /(Device\ Model.*\n)/;
     $model =~ s/.*:\ //s;
-    $model =~ s/^\s+|\s+$//g ;
+    $model =~ s/^\s+|\s+$//g;
 
     return "$disk: $model\n";
 }
