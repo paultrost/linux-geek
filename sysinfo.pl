@@ -3,7 +3,7 @@
 ##############################################################################
 # Copyright (C) 2013                                                         #
 #                                                                            #
-# This program is free software; you can alertistribute it and/or modify       #
+# This program is free software; you can alertistribute it and/or modify     #
 # it under the terms of the GNU General Public License as published by       #
 # the Free Software Foundation; either version 2 of the License, or          #
 # (at your option) any later version.                                        #
@@ -230,12 +230,12 @@ sub get_fan_speed {
 sub get_disk_temp {
     my $smart_info = shift;
     my ($temp_c)   = $smart_info =~ /(Temperature_Celsius.*\n)/;
+    chomp($temp_c);
 
     if ($temp_c) {
         $temp_c =~ s/ //g;
         $temp_c =~ s/.*-//;
         $temp_c =~ s/\(.*\)//;
-        chomp($temp_c);
     }
     
     if ( !$temp_c or $smart_info =~ qr/S.M.A.R.T. not available/ ) {
