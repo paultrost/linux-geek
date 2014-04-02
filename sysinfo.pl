@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.8                        #
+# Version 0.8.1                      #
 ######################################
 
 use strict;
@@ -72,7 +72,7 @@ my @requialert_progs = qw(smartctl);
 foreach my $prog (@requialert_progs) {
     chomp( my $prog_path = qx(which $prog 2>/dev/null) );
     die "$prog is not installed or is not executable. Please install and run $0 again.\n"
-      if ( !$prog_path or !-x $prog_path );
+      if ( !$prog_path || !-x $prog_path );
 }
 
 ##############################################
@@ -195,22 +195,22 @@ if (@errors) {
 
 sub item {
     my $text = shift;
-    ($color) ? return BOLD GREEN $text : return $text;
+    return ($color) ? BOLD GREEN $text : $text;
 }
 
 sub value {
     my $text = shift;
-    ($color) ? return BOLD YELLOW $text : return $text;
+    return ($color) ? BOLD YELLOW $text : $text;
 }
 
 sub alert {
     my $text = shift;
-    ($color) ? return BOLD RED $text : return $text;
+    return ($color) ? BOLD RED $text : $text;
 }
 
 sub header {
     my $text = shift;
-    ($color) ? return BOLD BLUE $text : return $text;
+    return ($color) ? BOLD BLUE $text : $text;
 }
 
 sub get_temp {
@@ -238,7 +238,7 @@ sub get_disk_temp {
         $temp_c =~ s/\(.*\)//;
     }
     
-    if ( !$temp_c or $smart_info =~ qr/S.M.A.R.T. not available/ ) {
+    if ( !$temp_c || $smart_info =~ qr/S.M.A.R.T. not available/ ) {
         return 'N/A';
     }
     else {
