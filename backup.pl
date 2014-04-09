@@ -21,7 +21,7 @@
 #####################################
 # Author: Paul Trost                #
 # Email: paul.trost@trostfamily.org #
-# Version: 0.4.2                    #
+# Version: 0.4.3                    #
 #####################################
 
 use strict;
@@ -38,11 +38,12 @@ use Sys::Hostname;
 
 my @rsyncopts = qw( -au --delete );
 
-########################################
-## Stop if not called as the root user #
-########################################
+############################################################################
+## Stop if not called as the root user or if a previous run is still going #
+############################################################################
 
 die "This script has to be run as root!\n" if ( $> != 0 );
+die "$0 is still running from previous execution!\n" if ( qx(ps aux | grep backup.pl | grep -v grep) );
 
 #############################################
 # Display help screen if no arguments given # 
