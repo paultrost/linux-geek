@@ -21,7 +21,7 @@
 #####################################
 # Author: Paul Trost                #
 # Email: paul.trost@trostfamily.org #
-# Version: 0.4.3                    #
+# Version: 0.4.5                    #
 #####################################
 
 use strict;
@@ -43,7 +43,7 @@ my @rsyncopts = qw( -au --delete );
 ############################################################################
 
 die "This script has to be run as root!\n" if ( $> != 0 );
-die "$0 is still running from previous execution!\n" if ( qx(ps aux | grep backup.pl | grep -v grep) );
+die "$0 is still running from previous execution!\n" if -e '/tmp/backuprunning';
 
 #############################################
 # Display help screen if no arguments given # 
@@ -163,6 +163,8 @@ else {
 # Rsync each folder in @folders to $mountpoint #
 ################################################
 
+qx( touch /tmp/backuprunning );
+
 # Testing for false $drivemount seems backwards yes, but keep in mind
 # this is testing captured output of the mount command which will only
 # have output in a failure
@@ -191,6 +193,8 @@ if ( !$drivemount ) {
         }
     }
 }
+
+unlink '/tmp/backuprunning';
 
 ####################### 
 ### Unmount $device ###
