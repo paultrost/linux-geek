@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.8.1                      #
+# Version 0.8.2                      #
 ######################################
 
 use strict;
@@ -230,7 +230,7 @@ sub get_fan_speed {
 sub get_disk_temp {
     my $smart_info = shift;
     my ($temp_c)   = $smart_info =~ /(Temperature_Celsius.*\n)/;
-    chomp($temp_c);
+    chomp($temp_c) if $temp_c;
 
     if ($temp_c) {
         $temp_c =~ s/ //g;
