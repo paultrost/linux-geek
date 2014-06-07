@@ -37,10 +37,11 @@ die "No .zip files found in directory\n"
 
 # Temp directory that will be used for zip files manipulation
 my $tmpdirectory = 'convert_tmp';
+die "$tmpdirectory still exists\n" if -e $tmpdirectory;
 
 # Verify that any necessary third party programs are installed
 die "Aborting, 7zip is not installed!\n"
-  if ( !-e '/usr/bin/7z' and !-e '/usr/local/bin/7z' );
+  if ( !-e '/usr/bin/7za' and !-e '/usr/local/bin/7za' );
 die "Aborting, zip is not installed!\n"
   if ( !-e '/usr/bin/zip' and !-e '/usr/local/bin/zip' );
 
@@ -52,14 +53,14 @@ foreach my $file (@ARGV) {
     $extn = substr( $file, -2 );
     print "Uncompressing $file\n";
     chdir $tmpdirectory;
-    qx(7z x "../$file" &>/dev/null);
+    qx(7za x "../$file" &>/dev/null);
     die "Could not uncompress $file: $!" if $? != 0;
     print "Compressing $filename.zip\n";
     qx(zip -9 -q -r "$filename.zip" \*);
     die "Could not compress $filename: $!" if $? != 0;
-    chomp( my $file_ok = qx(zip -T "$filename.zip") );
-    die "$filename.zip failed verification" if $file_ok !~ /test of.*OK/;
-    print "$file_ok\n";
+    #chomp( my $file_ok = qx(zip -T "$filename.zip") );
+    #die "$filename.zip failed verification" if $file_ok !~ /test of.*OK/;
+    #print "$file_ok\n";
     rename "$filename.zip", "../$filename.zip";
     chdir '../';
     print "Removing working directory and $file\n";
