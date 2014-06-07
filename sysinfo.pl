@@ -68,8 +68,8 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 # Ensure prerequisite programs are installed #
 ##############################################
 
-my @requialert_progs = qw(smartctl);
-foreach my $prog (@requialert_progs) {
+my @required_progs = qw(smartctl);
+foreach my $prog (@required_progs) {
     chomp( my $prog_path = qx(which $prog 2>/dev/null) );
     die "$prog is not installed or is not executable. Please install and run $0 again.\n"
       if ( !$prog_path || !-x $prog_path );
