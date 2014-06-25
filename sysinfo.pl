@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.8.2                      #
+# Version 0.8.3                      #
 ######################################
 
 use strict;
@@ -160,7 +160,7 @@ foreach my $disk (@disks) {
           if ( $disk_health !~ 'PASSED' );
     }
     else {
-        push @output, "$disk Temperature: N/A";
+        push @output, "$disk Temperature: N/A, Health: " . value($disk_health);
     }
 }
 
@@ -264,7 +264,9 @@ sub get_disk_health {
 sub get_disk_model {
     my ( $disk, $smart_info ) = @_;
     my ($model) = $smart_info =~ /(Device\ Model.*\n)/;
-    $model =~ s/.*:\ //s;
-    $model =~ s/^\s+|\s+$//g;
-    return "$disk: $model\n";
+    if ($model) {
+        $model =~ s/.*:\ //s;
+        $model =~ s/^\s+|\s+$//g;
+    }
+    return ($model) ? "$disk: $model\n" : "$disk: N/A\n";
 }
