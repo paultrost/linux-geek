@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.8.3                      #
+# Version 0.9                        #
 ######################################
 
 use strict;
@@ -113,7 +113,7 @@ foreach my $chipset (@chipset_names) {
                 push @output, "---------------------";
             }
             my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
-            push @output, "$sensor temperature: ${temp_c} C (${temp_f} F)";
+            push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
             push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
               if ( $temp_c > $cpu_temp_warn );
             $count_cpu = 1;
@@ -122,7 +122,7 @@ foreach my $chipset (@chipset_names) {
         # Get Motherboard temp
         if ( $sensor =~ m{M/BTemp} ) {
             my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
-            push @output, "$sensor temperature: ${temp_c} C (${temp_f} F)";
+            push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
             push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
               if ( $temp_c > $mb_temp_warn );
         }
@@ -135,7 +135,7 @@ foreach my $chipset (@chipset_names) {
             }
             my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
             $sensor =~ s/f/F/;
-            push @output, "$sensor speed: $speed_value RPM";
+            push @output, item("$sensor speed: ") . value("$speed_value RPM");
             $count_fan = 1;
         }
     }
@@ -153,14 +153,14 @@ foreach my $disk (@disks) {
     $disk_models .= get_disk_model( $disk, $smart_info );
     my ( $temp_c, $temp_f ) = get_disk_temp($smart_info);
     if ( $temp_c !~ 'N/A' ) {
-        push @output, "$disk Temperature: ${temp_c} C (${temp_f} F), Health: " . value($disk_health);
+        push @output, item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ") . item("Health: ") . value($disk_health);
         push @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
           if ( -e $disk and $temp_c > $disk_temp_warn );
         push @errors, "ALERT: $disk may be dying, S.M.A.R.T. status: $disk_health"
           if ( $disk_health !~ 'PASSED' );
     }
     else {
-        push @output, "$disk Temperature: N/A, Health: " . value($disk_health);
+        push @output, item("$disk Temperature: N/A, Health: ") . value($disk_health);
     }
 }
 
