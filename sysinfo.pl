@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9                        #
+# Version 0.9.1                      #
 ######################################
 
 use strict;
@@ -160,7 +160,7 @@ foreach my $disk (@disks) {
           if ( $disk_health !~ 'PASSED' );
     }
     else {
-        push @output, item("$disk Temperature: N/A, Health: ") . value($disk_health);
+        push @output, item("$disk Temperature: ") . value('N/A ') . item('Health: ') . value($disk_health);
     }
 }
 
