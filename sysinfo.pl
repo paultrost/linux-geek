@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.2                      #
+# Version 0.9.3                      #
 ######################################
 
 use strict;
@@ -30,7 +30,6 @@ use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
 use Sys::Load qw/getload uptime/;
-use Sys::Hostname;
 use Sys::MemInfo qw(totalmem freemem totalswap);
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
@@ -80,16 +79,6 @@ foreach my $prog (@required_progs) {
 
 my $sensors       = Hardware::SensorsParser->new;
 my @chipset_names = $sensors->list_chipsets;
-
-my $info          = Sys::Info->new;
-my $cpu           = $info->device('CPU');
-
-my $uptime        = int uptime();
-my $load          = (getload())[0];
-my $hostname      = hostname();
-my $os            = get_os();
-my $free_mem      = int( freemem() / 1024 / 1024 );
-my $total_mem     = int( totalmem() / 1024 / 1024 );
 
 #########################
 # Process sensor values #
@@ -168,14 +157,27 @@ foreach my $disk (@disks) {
 ##################
 
 if ( !$errorsonly ) {
+    my $info      = Sys::Info->new;
+    my $proc      = $info->device('CPU');
+    my $free_mem  = int( freemem() / 1024 / 1024 );
+    my $total_mem = int( totalmem() / 1024 / 1024 );
+
+    my $hostname  = qx(hostname);
+    my $os        = get_os() . "\n";
+    my $cpu       = scalar $proc->identify . "\n";
+    my $memory    = "${free_mem}M / ${total_mem}M \n";
+    my $uptime    = duration( int( uptime() ) ) . "\n";
+    my $sysload   = ( getload() )[0] . "\n";
+    my $disks     = "\n$disk_models";
+
     print "\n";
-    print item("Hostname:      "), value("$hostname\n");
-    print item("OS:            "), value("$os\n");
-    print item("CPU:           "), value(scalar $cpu->identify . "\n");
-    print item("Memory:        "), value("${free_mem}M / ${total_mem}M \n");
-    print item("System uptime: "), value(duration($uptime) . "\n");
-    print item("System load:   "), value("$load\n");
-    print item("Disks:         "), value("\n$disk_models");
+    print item("Hostname:      "), value($hostname);
+    print item("OS:            "), value($os);
+    print item("CPU:           "), value($cpu);
+    print item("Memory:        "), value($memory);
+    print item("System uptime: "), value($uptime);
+    print item("System load:   "), value($sysload);
+    print item("Disks:         "), value($disks);
     print "\n\n" if $] < 5.018; #extra spacing needed for Perl < 5.18
     print join( "\n", @output ), "\n";
     print "\n";
