@@ -21,14 +21,13 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.1                      #
+# Version 0.9.2                      #
 ######################################
 
 use strict;
 use warnings;
 use Hardware::SensorsParser;
 use Math::Round;
-use Linux::Distribution qw(distribution_name distribution_version);
 use Sys::Info;
 use Sys::Load qw/getload uptime/;
 use Sys::Hostname;
@@ -88,7 +87,7 @@ my $cpu           = $info->device('CPU');
 my $uptime        = int uptime();
 my $load          = (getload())[0];
 my $hostname      = hostname();
-my $os            = distribution_name() . ' ' . distribution_version();
+my $os            = get_os();
 my $free_mem      = int( freemem() / 1024 / 1024 );
 my $total_mem     = int( totalmem() / 1024 / 1024 );
 
@@ -269,4 +268,24 @@ sub get_disk_model {
         $model =~ s/^\s+|\s+$//g;
     }
     return ($model) ? "$disk: $model\n" : "$disk: N/A\n";
+}
+
+sub get_os {
+    chomp( my $system = qx(uname) );
+    my $release;
+    my $ret;
+
+    if ($system =~ /linux/i) {
+        chomp( my $kernel = qx(uname -r) );
+        chomp( $release = qx(lsb_release -d) );
+        ( undef, $release ) = split( ':', $release );
+        $release =~ s/^\s+//; 
+        $ret = "$system: $release  Kernel: $kernel";
+    }
+    elsif ($system =~ /freebsd/i) {
+        $release = qx(uname -r);
+        $ret = "$system: $release";
+    }
+
+    return $ret;
 }
