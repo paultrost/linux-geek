@@ -280,21 +280,11 @@ sub get_disk_info {
 }
 
 sub get_os {
-    chomp( my $system = qx(uname) );
     my $release;
-    my $ret;
+    chomp( my $kernel = qx(uname -r) );
+    chomp( $release = qx(lsb_release -d) );
+    ( undef, $release ) = split( ':', $release );
+    $release =~ s/^\s+//; 
 
-    if ($system =~ /linux/i) {
-        chomp( my $kernel = qx(uname -r) );
-        chomp( $release = qx(lsb_release -d) );
-        ( undef, $release ) = split( ':', $release );
-        $release =~ s/^\s+//; 
-        $ret = "$system: $release  Kernel: $kernel";
-    }
-    elsif ($system =~ /freebsd/i) {
-        $release = qx(uname -r);
-        $ret = "$system: $release";
-    }
-
-    return $ret;
+    return "$release  Kernel: $kernel";
 }
