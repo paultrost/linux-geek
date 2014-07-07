@@ -47,7 +47,7 @@ my $disk_temp_warn = 40;
 
 # What disks do you want to monitor temp on?
 # This can be a quoted list like "/dev/sda", "/dev/sdb" as well
-chomp( my @disks = qx(ls /dev/sd[a-z]) );
+chomp( my @disks = qx(ls /dev/*d[a-z]) );
 
 ###############################################
 # Set flag if -errorsonly option is specified #
@@ -135,21 +135,7 @@ push @output, header("Drive Temperature(s) and Status:");
 push @output, "---------------------";
 my $disk_models;
 foreach my $disk (@disks) {
-    chomp($disk);
-    my $smart_info  = qx(smartctl -a $disk);
-    my $disk_health = get_disk_health($smart_info);
-    $disk_models .= get_disk_model( $disk, $smart_info );
-    my ( $temp_c, $temp_f ) = get_disk_temp($smart_info);
-    if ( $temp_c !~ 'N/A' ) {
-        push @output, item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ") . item("Health: ") . value($disk_health);
-        push @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
-          if ( -e $disk and $temp_c > $disk_temp_warn );
-        push @errors, "ALERT: $disk may be dying, S.M.A.R.T. status: $disk_health"
-          if ( $disk_health !~ 'PASSED' );
-    }
-    else {
-        push @output, item("$disk Temperature: ") . value('N/A ') . item('Health: ') . value($disk_health);
-    }
+    get_disk_info($disk);
 }
 
 ##################
@@ -270,6 +256,27 @@ sub get_disk_model {
         $model =~ s/^\s+|\s+$//g;
     }
     return ($model) ? "$disk: $model\n" : "$disk: N/A\n";
+}
+
+sub get_disk_info {
+    my $disk = shift;
+    chomp($disk);
+
+    my $smart_info  = qx(smartctl -a $disk);
+    my $disk_health = get_disk_health($smart_info);
+    $disk_models .= get_disk_model( $disk, $smart_info );
+
+    my ( $temp_c, $temp_f ) = get_disk_temp($smart_info);
+    if ( $temp_c !~ 'N/A' ) {
+        push @output, item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ") . item("Health: ") . value($disk_health);
+        push @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
+          if ( -e $disk and $temp_c > $disk_temp_warn );
+        push @errors, "ALERT: $disk may be dying, S.M.A.R.T. status: $disk_health"
+          if ( $disk_health !~ 'PASSED' );
+    }
+    else {
+        push @output, item("$disk Temperature: ") . value('N/A ') . item('Health: ') . value($disk_health);
+    }
 }
 
 sub get_os {
