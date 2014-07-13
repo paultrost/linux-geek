@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.3                      #
+# Version 0.9.4                      #
 ######################################
 
 use strict;
@@ -30,7 +30,7 @@ use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
 use Sys::Load qw/getload uptime/;
-use Sys::MemInfo qw(totalmem freemem totalswap);
+use Sys::MemInfo qw( freemem totalmem freeswap totalswap );
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
@@ -147,11 +147,14 @@ if ( !$errorsonly ) {
     my $proc      = $info->device('CPU');
     my $free_mem  = int( freemem() / 1024 / 1024 );
     my $total_mem = int( totalmem() / 1024 / 1024 );
+    my $free_swap = int( freeswap() / 1024/ 1024 );
+    my $total_swap = int( totalswap() / 1024 / 1024 );
 
     my $hostname  = qx(hostname);
     my $os        = get_os() . "\n";
     my $cpu       = scalar $proc->identify . "\n";
     my $memory    = "${free_mem}M Free / ${total_mem}M Total\n";
+    my $swap 	  = "${free_swap}M Free / ${total_swap}M Total\n";
     my $uptime    = duration( int( uptime() ) ) . "\n";
     my $sysload   = ( getload() )[0] . "\n";
     my $disks     = "\n$disk_models";
@@ -161,6 +164,7 @@ if ( !$errorsonly ) {
     print item("OS:            "), value($os);
     print item("CPU:           "), value($cpu);
     print item("Memory:        "), value($memory);
+    print item("Swap:	       "), value($swap);
     print item("System uptime: "), value($uptime);
     print item("System load:   "), value($sysload);
     print item("Disks:         "), value($disks);
