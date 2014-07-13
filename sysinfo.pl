@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.4                      #
+# Version 0.9.5                      #
 ######################################
 
 use strict;
@@ -30,7 +30,6 @@ use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
 use Sys::Load qw/getload uptime/;
-use Sys::MemInfo qw( freemem totalmem freeswap totalswap );
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
@@ -145,16 +144,15 @@ foreach my $disk (@disks) {
 if ( !$errorsonly ) {
     my $info      = Sys::Info->new;
     my $proc      = $info->device('CPU');
-    my $free_mem  = int( freemem() / 1024 / 1024 );
-    my $total_mem = int( totalmem() / 1024 / 1024 );
-    my $free_swap = int( freeswap() / 1024/ 1024 );
-    my $total_swap = int( totalswap() / 1024 / 1024 );
-
     my $hostname  = qx(hostname);
     my $os        = get_os() . "\n";
     my $cpu       = scalar $proc->identify . "\n";
-    my $memory    = "${free_mem}M Free / ${total_mem}M Total\n";
-    my $swap 	  = "${free_swap}M Free / ${total_swap}M Total\n";
+    my $memstats  = qx( free -m | grep Mem | awk {'print \$2,\$3,\$4,\$5,\$6,\$7'} );
+    my ($m_total, $m_used, $m_free, $m_shared, $m_buffered, $m_cached) = split( ' ', $memstats);
+    my $memory    = "${m_total}M Total - ${m_used}M Used, ${m_free}M Free, ${m_buffered}M Buffered, ${m_cached}M Cached\n";
+    my $swapstats = qx( free -m | grep Swap | awk {'print \$2,\$3,\$4'} );
+    my ($s_total, $s_used, $s_free ) = split( ' ', $swapstats);
+    my $swap 	  = "${s_total}M Total - ${s_used}M Used, ${s_free}M Free\n";
     my $uptime    = duration( int( uptime() ) ) . "\n";
     my $sysload   = ( getload() )[0] . "\n";
     my $disks     = "\n$disk_models";
@@ -178,7 +176,6 @@ if (@errors) {
     print alert("$_\n") foreach (@errors);
     print "\n";
 }
-
 
 ###############
 # Subroutines #
