@@ -151,7 +151,7 @@ if ( !$errorsonly ) {
     my $hostname  = qx(hostname);
     my $os        = get_os() . "\n";
     my $cpu       = scalar $proc->identify . "\n";
-    my $memory    = "${free_mem}M / ${total_mem}M \n";
+    my $memory    = "${free_mem}M Free / ${total_mem}M Total\n";
     my $uptime    = duration( int( uptime() ) ) . "\n";
     my $sysload   = ( getload() )[0] . "\n";
     my $disks     = "\n$disk_models";
@@ -284,7 +284,7 @@ sub get_os {
     chomp( my $kernel = qx(uname -r) );
     chomp( $release = qx(lsb_release -d) );
     ( undef, $release ) = split( ':', $release );
-    $release =~ s/^\s+//; 
+    $release =~ s/^\s+//;
 
     return "$release  Kernel: $kernel";
 }
