@@ -21,7 +21,7 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.5                      #
+# Version 0.9.6                      #
 ######################################
 
 use strict;
@@ -94,7 +94,7 @@ foreach my $chipset (@chipset_names) {
 
         # Get CPU temps
         if ( $sensor =~ /Core/ ) {
-            if ($count_cpu == 0) {
+            if ( $count_cpu == 0 ) {
                 push @output, "\n";
                 push @output, header("CPU/MB Temperature(s)");
                 push @output, "---------------------";
@@ -118,7 +118,7 @@ foreach my $chipset (@chipset_names) {
         if ( $sensor =~ /fan/ ) {
             if ( $count_fan == 0 ) {
                 push @output, header("Fan Speeds");
-                push @output, "----------" ;
+                push @output, "----------";
             }
             my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
             $sensor =~ s/f/F/;
@@ -133,26 +133,27 @@ push @output, "\n";
 push @output, header("Drive Temperature(s) and Status:");
 push @output, "---------------------";
 my $disk_models;
-foreach my $disk (@disks) {
-    get_disk_info($disk);
-}
+get_disk_info($_) foreach (@disks);
 
 ##################
 # Display Output #
 ##################
 
 if ( !$errorsonly ) {
-    my $info      = Sys::Info->new;
-    my $proc      = $info->device('CPU');
     my $hostname  = qx(hostname);
     my $os        = get_os() . "\n";
+    my $info      = Sys::Info->new;
+    my $proc      = $info->device('CPU');
     my $cpu       = scalar $proc->identify . "\n";
+    
     my $memstats  = qx( free -m | grep Mem | awk {'print \$2,\$3,\$4,\$5,\$6,\$7'} );
     my ($m_total, $m_used, $m_free, $m_shared, $m_buffered, $m_cached) = split( ' ', $memstats);
     my $memory    = "${m_total}M Total - ${m_used}M Used, ${m_free}M Free, ${m_buffered}M Buffered, ${m_cached}M Cached\n";
+
     my $swapstats = qx( free -m | grep Swap | awk {'print \$2,\$3,\$4'} );
     my ($s_total, $s_used, $s_free ) = split( ' ', $swapstats);
     my $swap 	  = "${s_total}M Total - ${s_used}M Used, ${s_free}M Free\n";
+
     my $uptime    = duration( int( uptime() ) ) . "\n";
     my $sysload   = ( getload() )[0] . "\n";
     my $disks     = "\n$disk_models";
