@@ -21,7 +21,7 @@
 #####################################
 # Author: Paul Trost                #
 # Email: paul.trost@trostfamily.org #
-# Version: 0.4.5                    #
+# Version: 0.5                      #
 #####################################
 
 use strict;
@@ -69,6 +69,7 @@ my $email_auth_pass;
 my $email_addr = $email_auth_addr;
 my $outbound_server;
 my $folders;
+my $tmpfile = '/tmp/backuprunning';
 
 # Get the options from the command line
 GetOptions(
@@ -135,7 +136,7 @@ my $nounmount;
 my $error;
 my @REPORT;
 my $hostname = hostname();
-chomp( my $date = qx(date) );
+my $date     = localtime;
 
 #######################################################
 # Check to see that $device and $mountpoint are valid #
@@ -143,6 +144,9 @@ chomp( my $date = qx(date) );
 
 die "$device is not a valid block device\n"          if ( !-b $device );
 die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
+
+my $space = qx(df $device | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
+die "Mount point $mountpoint is out of space.\n" if $space == 0;
 
 #################
 # Begin @REPORT #
@@ -163,7 +167,8 @@ else {
 # Rsync each folder in @folders to $mountpoint #
 ################################################
 
-qx( touch /tmp/backuprunning );
+open( my $tmp_filename, '>', $tmpfile )
+  or die "Could not open $tmpfile, $!\n";
 
 # Testing for false $drivemount seems backwards yes, but keep in mind
 # this is testing captured output of the mount command which will only
@@ -179,6 +184,7 @@ if ( !$drivemount ) {
         }
 
         # Actually run rsync
+        push @REPORT, "Now backing up folder '$folder':\n";
         my $output = qx(rsync @rsyncopts $folder $mountpoint);
 
         if ( $? != 0 and $output !~ /sent.*bytes.*received.*bytes/ ) {
@@ -187,14 +193,14 @@ if ( !$drivemount ) {
             $error++;
         }
         else {
-            push @REPORT, "Now backing up folder '$folder':\n";
             push @REPORT, $output;
             push @REPORT, "\n\n" if $debug;
         }
     }
 }
 
-unlink '/tmp/backuprunning';
+close $tmp_filename;
+unlink $tmpfile;
 
 ####################### 
 ### Unmount $device ###
