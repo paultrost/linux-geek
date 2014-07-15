@@ -69,7 +69,7 @@ my @required_progs = qw(smartctl);
 foreach my $prog (@required_progs) {
     chomp( my $prog_path = qx(which $prog 2>/dev/null) );
     die "$prog is not installed or is not executable. Please install and run $0 again.\n"
-      if ( !$prog_path || !-x $prog_path );
+        if ( !$prog_path || !-x $prog_path );
 }
 
 ##############################################
@@ -102,16 +102,16 @@ foreach my $chipset (@chipset_names) {
             my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
             push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
             push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
-              if ( $temp_c > $cpu_temp_warn );
+                if ( $temp_c > $cpu_temp_warn );
             $count_cpu = 1;
         }
 
         # Get Motherboard temp
         if ( $sensor =~ m{M/BTemp} ) {
-            my ($temp_c, $temp_f) = get_temp( 'M/B', $chipset, $sensor );
+            my ( $temp_c, $temp_f ) = get_temp( 'M/B', $chipset, $sensor );
             push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
             push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
-              if ( $temp_c > $mb_temp_warn );
+                if ( $temp_c > $mb_temp_warn );
         }
 
         # Get Fan speeds
@@ -140,23 +140,23 @@ get_disk_info($_) foreach (@disks);
 ##################
 
 if ( !$errorsonly ) {
-    my $hostname  = qx(hostname);
-    my $os        = get_os() . "\n";
-    my $info      = Sys::Info->new;
-    my $proc      = $info->device('CPU');
-    my $cpu       = scalar $proc->identify . "\n";
-    
-    my $memstats  = qx( free -m | grep Mem | awk {'print \$2,\$3,\$4,\$5,\$6,\$7'} );
-    my ($m_total, $m_used, $m_free, $m_shared, $m_buffered, $m_cached) = split( ' ', $memstats);
-    my $memory    = "${m_total}M Total - ${m_used}M Used, ${m_free}M Free, ${m_buffered}M Buffered, ${m_cached}M Cached\n";
+    my $hostname = qx(hostname);
+    my $os       = get_os() . "\n";
+    my $info     = Sys::Info->new;
+    my $proc     = $info->device('CPU');
+    my $cpu      = scalar $proc->identify . "\n";
+
+    my $memstats = qx( free -m | grep Mem | awk {'print \$2,\$3,\$4,\$5,\$6,\$7'} );
+    my ( $m_total, $m_used, $m_free, $m_shared, $m_buffered, $m_cached ) = split( ' ', $memstats );
+    my $memory = "${m_total}M Total - ${m_used}M Used, ${m_free}M Free, ${m_buffered}M Buffered, ${m_cached}M Cached\n";
 
     my $swapstats = qx( free -m | grep Swap | awk {'print \$2,\$3,\$4'} );
-    my ($s_total, $s_used, $s_free ) = split( ' ', $swapstats);
-    my $swap 	  = "${s_total}M Total - ${s_used}M Used, ${s_free}M Free\n";
+    my ( $s_total, $s_used, $s_free ) = split( ' ', $swapstats );
+    my $swap = "${s_total}M Total - ${s_used}M Used, ${s_free}M Free\n";
 
-    my $uptime    = duration( int( uptime() ) ) . "\n";
-    my $sysload   = ( getload() )[0] . "\n";
-    my $disks     = "\n$disk_models";
+    my $uptime  = duration( int( uptime() ) ) . "\n";
+    my $sysload = ( getload() )[0] . "\n";
+    my $disks   = "\n$disk_models";
 
     print "\n";
     print item("Hostname:      "), value($hostname);
@@ -167,11 +167,11 @@ if ( !$errorsonly ) {
     print item("System uptime: "), value($uptime);
     print item("System load:   "), value($sysload);
     print item("Disks:         "), value($disks);
-    print "\n\n" if $] < 5.018; #extra spacing needed for Perl < 5.18
+    print "\n\n" if $] < 5.018;    #extra spacing needed for Perl < 5.18
     print join( "\n", @output ), "\n";
     print "\n";
 }
-    
+
 if (@errors) {
     print "\n";
     print alert("$_\n") foreach (@errors);
@@ -218,7 +218,7 @@ sub get_fan_speed {
 
 sub get_disk_temp {
     my $smart_info = shift;
-    my ($temp_c)   = $smart_info =~ /(Temperature_Celsius.*\n)/;
+    my ($temp_c) = $smart_info =~ /(Temperature_Celsius.*\n)/;
     chomp($temp_c) if $temp_c;
 
     if ($temp_c) {
@@ -226,7 +226,7 @@ sub get_disk_temp {
         $temp_c =~ s/.*-//;
         $temp_c =~ s/\(.*\)//;
     }
-    
+
     if ( !$temp_c || $smart_info =~ qr/S.M.A.R.T. not available/ ) {
         return 'N/A';
     }
@@ -238,7 +238,7 @@ sub get_disk_temp {
 
 sub get_disk_health {
     my $smart_info = shift;
-    my ($health)   = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
+    my ($health) = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
 
     if ( $health and $health =~ /PASSED|FAILED/ ) {
         $health =~ s/.*result: //s;
@@ -272,9 +272,9 @@ sub get_disk_info {
     if ( $temp_c !~ 'N/A' ) {
         push @output, item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ") . item("Health: ") . value($disk_health);
         push @errors, "ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)"
-          if ( -e $disk and $temp_c > $disk_temp_warn );
+            if ( -e $disk and $temp_c > $disk_temp_warn );
         push @errors, "ALERT: $disk may be dying, S.M.A.R.T. status: $disk_health"
-          if ( $disk_health !~ 'PASSED' );
+            if ( $disk_health !~ 'PASSED' );
     }
     else {
         push @output, item("$disk Temperature: ") . value('N/A ') . item('Health: ') . value($disk_health);
@@ -282,9 +282,8 @@ sub get_disk_info {
 }
 
 sub get_os {
-    my $release;
-    chomp( my $kernel = qx(uname -r) );
-    chomp( $release = qx(lsb_release -d) );
+    chomp( my $kernel  = qx(uname -r) );
+    chomp( my $release = qx(lsb_release -d) );
     ( undef, $release ) = split( ':', $release );
     $release =~ s/^\s+//;
 
