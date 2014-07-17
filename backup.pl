@@ -136,7 +136,7 @@ my $nounmount;
 my $error;
 my @REPORT;
 my $hostname = hostname();
-my $date     = localtime;
+my $date     = localtime();
 
 #######################################################
 # Check to see that $device and $mountpoint are valid #
@@ -227,7 +227,7 @@ else {
 
 # Set status message for report to failed or successful based on if 
 # error messages beginning with * were found
-chomp( $date = qx(date) );
+$date = localtime();
 push @REPORT, "Backup finished at $date\n";
 my $status = ($error) ? "failed or couldn't rsync a specified directory" : 'successful';
 
