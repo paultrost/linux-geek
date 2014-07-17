@@ -21,11 +21,12 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.6                      #
+# Version 0.9.7                      #
 ######################################
 
 use strict;
 use warnings;
+use Switch;
 use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
@@ -91,39 +92,40 @@ foreach my $chipset (@chipset_names) {
     my $count_fan    = 0;
     my @sensor_names = sort( $sensors->list_sensors($chipset) );
     foreach my $sensor (@sensor_names) {
-
-        # Get CPU temps
-        if ( $sensor =~ /Core/ ) {
-            if ( $count_cpu == 0 ) {
-                push @output, "\n";
-                push @output, header("CPU/MB Temperature(s)");
-                push @output, "---------------------";
+        switch($sensor) {
+            # Get CPU temps
+            case { $sensor =~ /Core/ } {
+                if ( $count_cpu == 0 ) {
+                    push @output, "\n";
+                    push @output, header("CPU/MB Temperature(s)");
+                    push @output, "---------------------";
+                }
+                my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
+                push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
+                push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
+                    if ( $temp_c > $cpu_temp_warn );
+                $count_cpu = 1;
             }
-            my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
-            push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
-            push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
-                if ( $temp_c > $cpu_temp_warn );
-            $count_cpu = 1;
-        }
 
-        # Get Motherboard temp
-        if ( $sensor =~ m{M/BTemp} ) {
-            my ( $temp_c, $temp_f ) = get_temp( 'M/B', $chipset, $sensor );
-            push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
-            push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
-                if ( $temp_c > $mb_temp_warn );
-        }
+            # Get Motherboard temp
+            case { $sensor =~ m/M\/BTemp/ } {
+                my ( $temp_c, $temp_f ) = get_temp( 'M/B', $chipset, $sensor );
+                push @output, item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
+                push @errors, "ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)"
+                   if ( $temp_c > $mb_temp_warn );
+            }   
 
         # Get Fan speeds
-        if ( $sensor =~ /fan/ ) {
-            if ( $count_fan == 0 ) {
-                push @output, header("Fan Speeds");
-                push @output, "----------";
+            case { $sensor =~ /fan/ } {
+                if ( $count_fan == 0 ) {
+                    push @output, header("Fan Speeds");
+                    push @output, "----------";
+                }
+                my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
+                $sensor =~ s/f/F/;
+                push @output, item("$sensor speed: ") . value("$speed_value RPM");
+                $count_fan = 1;
             }
-            my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
-            $sensor =~ s/f/F/;
-            push @output, item("$sensor speed: ") . value("$speed_value RPM");
-            $count_fan = 1;
         }
     }
 }
