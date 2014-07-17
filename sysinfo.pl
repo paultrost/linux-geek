@@ -92,7 +92,7 @@ foreach my $chipset (@chipset_names) {
     my $count_fan    = 0;
     my @sensor_names = sort( $sensors->list_sensors($chipset) );
     foreach my $sensor (@sensor_names) {
-        switch($sensor) {
+        switch ($sensor) {
             # Get CPU temps
             case { $sensor =~ /Core/ } {
                 if ( $count_cpu == 0 ) {
@@ -115,7 +115,7 @@ foreach my $chipset (@chipset_names) {
                    if ( $temp_c > $mb_temp_warn );
             }   
 
-        # Get Fan speeds
+            # Get Fan speeds
             case { $sensor =~ /fan/ } {
                 if ( $count_fan == 0 ) {
                     push @output, header("Fan Speeds");
@@ -242,7 +242,7 @@ sub get_disk_health {
     my $smart_info = shift;
     my ($health) = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
 
-    if ( $health and $health =~ /PASSED|FAILED/ ) {
+    if ( defined($health) and $health =~ /PASSED|FAILED/ ) {
         $health =~ s/.*result: //s;
         chomp($health);
         return $health;
@@ -255,7 +255,7 @@ sub get_disk_health {
 sub get_disk_model {
     my ( $disk, $smart_info ) = @_;
     my ($model) = $smart_info =~ /(Device\ Model.*\n)/;
-    if ($model) {
+    if ( defined($model) ) {
         $model =~ s/.*:\ //s;
         $model =~ s/^\s+|\s+$//g;
     }
