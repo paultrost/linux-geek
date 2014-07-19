@@ -21,12 +21,14 @@
 ######################################
 # Author: Paul Trost                 #
 # Email:  paul.trost@trostfamily.org #
-# Version 0.9.7                      #
+# Version 0.9.8                      #
 ######################################
 
 use strict;
 use warnings;
 use Switch;
+use Sys::Hostname;
+use File::Which;
 use Hardware::SensorsParser;
 use Math::Round;
 use Sys::Info;
@@ -47,7 +49,7 @@ my $disk_temp_warn = 40;
 
 # What disks do you want to monitor temp on?
 # This can be a quoted list like "/dev/sda", "/dev/sdb" as well
-chomp( my @disks = qx(ls /dev/*d[a-z]) );
+my @disks = glob '/dev/*d[a-z]';
 
 ###############################################
 # Set flag if -errorsonly option is specified #
@@ -68,7 +70,7 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 
 my @required_progs = qw(smartctl);
 foreach my $prog (@required_progs) {
-    chomp( my $prog_path = qx(which $prog 2>/dev/null) );
+    my $prog_path = which($prog);
     die "$prog is not installed or is not executable. Please install and run $0 again.\n"
         if ( !$prog_path || !-x $prog_path );
 }
@@ -142,7 +144,7 @@ get_disk_info($_) foreach (@disks);
 ##################
 
 if ( !$errorsonly ) {
-    my $hostname = qx(hostname);
+    my $hostname = hostname() . "\n";
     my $os       = get_os() . "\n";
     my $info     = Sys::Info->new;
     my $proc     = $info->device('CPU');
@@ -284,10 +286,10 @@ sub get_disk_info {
 }
 
 sub get_os {
-    chomp( my $kernel  = qx(uname -r) );
     chomp( my $release = qx(lsb_release -d) );
+    chomp( my $kernel  = qx(uname -r) );
     ( undef, $release ) = split( ':', $release );
     $release =~ s/^\s+//;
 
-    return "$release  Kernel: $kernel";
+    return "$release | Kernel: $kernel";
 }
