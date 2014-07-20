@@ -1,29 +1,5 @@
 #!/usr/bin/env perl 
 
-##############################################################################
-# Copyright (C) 2014                                                         #
-#                                                                            #
-# This program is free software; you can redistribute it and/or modify       #
-# it under the terms of the GNU General Public License as published by       #
-# the Free Software Foundation; either version 2 of the License, or          #
-# (at your option) any later version.                                        #
-#                                                                            #
-# This program is distributed in the hope that it will be useful,            #
-# but WITHOUT ANY WARRANTY; without even the implied warranty of             #
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the               #
-# GNU General Public License for more details.                               #
-#                                                                            #
-# You should have received a copy of the GNU General Public License along    #
-# with this program; if not, write to the Free Software Foundation, Inc.,    #
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.                #
-##############################################################################
-
-#####################################
-# Author: Paul Trost                #
-# Email: paul.trost@trostfamily.org #
-# Version: 0.5                      #
-#####################################
-
 use strict;
 use warnings;
 use Net::SMTP::SSL;
@@ -31,6 +7,7 @@ use Authen::SASL;
 use Getopt::Long;
 use Pod::Usage;
 use Sys::Hostname;
+
 
 #################################
 ## USER CONFIGURABLE VARIABLES ##
@@ -95,39 +72,6 @@ pod2usage(1) if $help;
 die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
   unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_addr and $email_auth_pass and $outbound_server and $folders );
 
-=head1 NAME
-
-backup.pl - Rsync list of folders to a mounted device
-
-=head1 SYNOPSIS
-
-backup.pl [options] [parameters]
-
-Options:
-
- --help            Display available and required options
- --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
- --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
- --debug           Enable verbose output of rsync for debugging
- --debug_smtp      Enable verbose screen output for SMTP transaction emailing the report
-
-Required Parameters:
- 
- --device          Block device to mount
- --mountpoint      Directory to mount device at
- --fstype          Filesystem type on the device (ext4, ntfs, etc..)
- --email_auth_addr Email address for SMTP Auth
- --email_auth_pass Password for SMTP Auth (use \ to escape characters)
- --email_addr      Email address to send backup report to (defaults to email_auth_addr)
- --outbound_server Server to send mail through
- --folders         Directories to back up (for multiple folders, see example)
-
-Example:
-
-  backup.pl --device /dev/sdc1 --mountpoint /backup --fstype ext4 --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder "/etc /usr/local/ /home"
-
-=cut
-
 ###############################
 # Additional variables needed #
 ###############################
@@ -168,14 +112,15 @@ else {
 ################################################
 
 open( my $tmp_filename, '>', $tmpfile )
-  or die "Could not open $tmpfile, $!\n";
+    or die "Could not open $tmpfile, $!\n";
+close $tmp_filename;
 
 # Testing for false $drivemount seems backwards yes, but keep in mind
 # this is testing captured output of the mount command which will only
 # have output in a failure
 if ( !$drivemount ) {
     my @folders = split( / / , $folders );
-    push( @rsyncopts, '--verbose' ) if $debug;
+    if ($debug) { push( @rsyncopts, '--verbose' ); }
     foreach my $folder (@folders) {
         if ( !-d $folder ) {
             push @REPORT, "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
@@ -199,7 +144,6 @@ if ( !$drivemount ) {
     }
 }
 
-close $tmp_filename;
 unlink $tmpfile;
 
 ####################### 
@@ -260,3 +204,63 @@ $smtp->datasend("\n");
 $smtp->datasend(@REPORT);
 $smtp->dataend();
 $smtp->quit();
+
+exit ($error) ? 1 : 0;
+
+
+=pod
+
+=head1 NAME
+
+ backup.pl
+
+=head1 VERSION
+
+ 0.6
+
+=head1 USAGE
+
+ backup.pl [options] [parameters]
+
+ Example:
+ backup.pl --device /dev/sdc1 --mountpoint /backup --fstype ext4 --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder "/etc /usr/local/ /home"
+
+
+=head1 DESCRIPTION
+
+ Rsync list of folders to a mounted device
+
+=head1 REQUIRED ARGUMENTS
+ 
+ --device          Block device to mount
+ --mountpoint      Directory to mount device at
+ --fstype          Filesystem type on the device (ext4, ntfs, etc..)
+ --email_auth_addr Email address for SMTP Auth
+ --email_auth_pass Password for SMTP Auth (use \ to escape characters)
+ --email_addr      Email address to send backup report to (defaults to email_auth_addr)
+ --outbound_server Server to send mail through
+ --folders         Directories to back up (for multiple folders, see example)
+
+=head1 OPTIONS
+
+ --help            Display available and required options
+ --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
+ --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
+ --debug           Enable verbose output of rsync for debugging
+ --debug_smtp      Enable verbose screen output for SMTP transaction emailing the report
+
+=head1 EXIT STATUS
+ 
+ Exits with 1 if there was a caught error in the rsync process, otherwise 0.
+
+=head1 AUTHOR
+
+ Paul Trost <paul.trost@trostfamily.org>
+
+=head1 LICENSE AND COPYRIGHT
+  
+ Copyright 2014.
+ This script is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License v2, or at your option any later version.
+ <http://gnu.org/licenses/gpl.html>
+
+=cut
