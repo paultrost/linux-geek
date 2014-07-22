@@ -149,7 +149,7 @@ if ( !$errorsonly ) {
     print item('System uptime: '), value($uptime);
     print item('System load:   '), value($sysload);
     print item('Disks:         '), value($disks);
-    if ( $] < 5.018 ) {  print "\n\n" };    #extra spacing needed for Perl < 5.18
+    if ( $] < 5.018 ) { print "\n\n" };    #extra spacing needed for Perl < 5.18
     print join( "\n", @output ), "\n";
     print "\n";
 }
@@ -195,21 +195,21 @@ sub get_temp {
 sub get_fan_speed {
     my ( $realname, $sensor, $sensorname ) = @_;
     my $speed_value = round( $sensors->get_sensor_value( $sensor, $sensorname, 'input' ) );
-    return ( $speed_value eq '0' ) ? 'N/A' : $speed_value;
+    return ( $speed_value ne '0' ) ? $speed_value : 'N/A';
 }
 
 sub get_disk_temp {
-    my $smart_info = shift;
-    my ($temp_c) = $smart_info =~ /(Temperature_Celsius.*\n)/;
+    my $smart_ref = shift;
+    my ($temp_c) = ( $$smart_ref =~ /(Temperature_Celsius.*\n)/ );
 
-    if ($temp_c) {
+    if ( defined $temp_c) {
         chomp $temp_c;
         $temp_c =~ s/ //g;
         $temp_c =~ s/.*-//;
         $temp_c =~ s/\(.*\)//;
     }
 
-    if ( !$temp_c || $smart_info =~ qr/S.M.A.R.T. not available/x ) {
+    if ( !$temp_c || $$smart_ref =~ qr/S.M.A.R.T. not available/x ) {
         return 'N/A';
     }
     else {
@@ -219,8 +219,8 @@ sub get_disk_temp {
 }
 
 sub get_disk_health {
-    my $smart_info = shift;
-    my ($health) = $smart_info =~ /(SMART overall-health self-assessment.*\n)/;
+    my $smart_ref = shift;
+    my ($health) = ( $$smart_ref =~ /(SMART overall-health self-assessment.*\n)/ );
 
     if ( defined $health and $health =~ /PASSED|FAILED/x ) {
         $health =~ s/.*result: //;
@@ -233,8 +233,8 @@ sub get_disk_health {
 }
 
 sub get_disk_model {
-    my ( $disk, $smart_info ) = @_;
-    my ($model) = $smart_info =~ /(Device\ Model.*\n)/;
+    my ( $disk, $smart_ref ) = @_;
+    my ($model) = ( $$smart_ref =~ /(Device\ Model.*\n)/ );
     if ( defined $model ) {
         $model =~ s/.*:\ //;
         $model =~ s/^\s+|\s+$//g;
@@ -246,11 +246,13 @@ sub get_disk_info {
     my $disk = shift;
     chomp $disk;
 
-    my $smart_info  = qx(smartctl -a $disk);
-    my $disk_health = get_disk_health($smart_info);
-    $disk_models .= get_disk_model( $disk, $smart_info );
+    my $smart_out = qx(smartctl -a $disk);
+    my $smart_out_ref = \$smart_out;
 
-    my ( $temp_c, $temp_f ) = get_disk_temp($smart_info);
+    my $disk_health = get_disk_health($smart_out_ref);
+    $disk_models .= get_disk_model( $disk, $smart_out_ref );
+
+    my ( $temp_c, $temp_f ) = get_disk_temp($smart_out_ref);
     if ( $temp_c !~ 'N/A' ) {
         push @output, item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ") . item('Health: ') . value($disk_health);
         if ( -e $disk and $temp_c > $disk_temp_warn ) {
@@ -284,7 +286,7 @@ sub get_os {
 
 =head1 VERSION
 
- 0.9.9
+ 1.0
 
 =head1 USAGE
 
@@ -292,7 +294,7 @@ sub get_os {
 
 =head1 DESCRIPTION
 
- Gather information from system sensors, and S.M.A.R.T. drive statuses.
+ Gather information from system sensors to display CPU temperatures and fan RPMs. Also display S.M.A.R.T. capable drive statuses.
 
 =head1 OPTIONS
 
