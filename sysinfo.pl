@@ -61,8 +61,8 @@ foreach my $prog (@required_progs) {
 # Setup file handles for logging output and errors #
 ####################################################
 
-open( my $output, '>', \ my $sensors_out);
-open( my $errors, '>', \ my $err_out);
+open( my $output, '>', \ my $sensors_out) or die "$!\n";
+open( my $errors, '>', \ my $err_out) or die "$!\n";
 
 #########################
 # Process sensor values #
@@ -80,14 +80,14 @@ foreach my $chipset ( $sensors->list_chipsets ) {
             # Get CPU temps
             when ( /Core/ ) {
                 if ( $count_cpu == 0 ) {
-                    print $output "\n";
-                    print $output header('CPU/MB Temperature(s)');
-                    print $output "---------------------\n";
+                    print {$output} "\n";
+                    print {$output} header('CPU/MB Temperature(s)');
+                    print {$output} "---------------------\n";
                 }
                 my ( $temp_c, $temp_f ) = get_temp( $sensor, $chipset, $sensor );
-                print $output item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
+                print {$output} item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
                 if ( $temp_c > $cpu_temp_warn ) {
-                    print $errors alert("ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)");
+                    print {$errors} alert("ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)");
                 }
                 $count_cpu = 1;
             }
@@ -95,21 +95,21 @@ foreach my $chipset ( $sensors->list_chipsets ) {
             # Get Motherboard temp
             when ( /M\/BTemp/ ) {
                 my ( $temp_c, $temp_f ) = get_temp( 'M/B', $chipset, $sensor );
-                print $output item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
+                print {$output} item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
                 if ( $temp_c > $mb_temp_warn ) {
-                    print $errors alert("ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)");
+                    print {$errors} alert("ALERT: $sensor temperature threshold exceeded, $temp_c C (${temp_f} F)");
                 }
             }
 
             # Get Fan speeds
             when ( /fan/ ) {
                 if ( $count_fan == 0 ) {
-                    print $output header('Fan Speeds');
-                    print $output "----------\n";
+                    print {$output} header('Fan Speeds');
+                    print {$output} "----------\n";
                 }
                 my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
                 $sensor =~ s/f/F/;
-                print $output item("$sensor speed: ") . value("$speed_value RPM");
+                print {$output} item("$sensor speed: ") . value("$speed_value RPM");
                 $count_fan = 1;
             }
         }
@@ -117,9 +117,9 @@ foreach my $chipset ( $sensors->list_chipsets ) {
 }
 
 # Get sensor values for disks
-print $output "\n";
-print $output header('Drive Temperature(s) and Status:');
-print $output "-------------------------------\n";
+print {$output} "\n";
+print {$output} header('Drive Temperature(s) and Status:');
+print {$output} "-------------------------------\n";
 my $disk_models;
 foreach my $disk (@disks) {
     chomp $disk;
@@ -131,18 +131,18 @@ foreach my $disk (@disks) {
 
     my ( $temp_c, $temp_f ) = get_disk_temp($smart_out_ref);
     if ( $temp_c !~ 'N/A' ) {
-        print $output item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ", 0);
-        print $output item('Health: ') . value($disk_health);
+        print {$output} item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ", 0);
+        print {$output} item('Health: ') . value($disk_health);
         if ( -e $disk and $temp_c > $disk_temp_warn ) {
-            print $errors alert("ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)");
+            print {$errors} alert("ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)");
         }
         if ( $disk_health !~ 'PASSED' ) {
-            print $errors alert("ALERT: $disk may be dying, S.M.A.R.T. status: $disk_health");
+            print {$errors} alert("ALERT: $disk may be dying, S.M.A.R.T. status: $disk_health");
         }
     }
     else {
-        print $output item("$disk Temperature: ") . value('N/A ', 0);
-        print $output item('Health: ') . value($disk_health);
+        print {$output} item("$disk Temperature: ") . value('N/A ', 0);
+        print {$output} item('Health: ') . value($disk_health);
     }
 }
 
@@ -290,7 +290,7 @@ sub get_os {
 
 =head1 VERSION
 
- 1.1.1
+ 1.1.2
 
 =head1 USAGE
 
