@@ -77,8 +77,7 @@ die "Not all required parameters specified, run '$0 --help' and check your argum
 ###############################
 
 my $nounmount;
-my $error;
-my @REPORT;
+my $error    = 0;
 my $hostname = hostname();
 my $date     = localtime();
 
@@ -92,19 +91,21 @@ die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
 my $space = qx(df $device | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
 die "Mount point $mountpoint is out of space.\n" if $space == 0;
 
+open( my $report, '>', \ my $report_text );
+
 #################
 # Begin @REPORT #
 #################
 
-push @REPORT, "Starting backup of $hostname at $date\n\n";
+print $report "Starting backup of $hostname at $date\n\n";
 
 my $drivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
 if ($drivemount) {
-    push @REPORT, "*** Could not mount $device on $mountpoint ***\n\n$drivemount\n";
+    print $report "*** Could not mount $device on $mountpoint ***\n\n$drivemount\n";
     $nounmount = 1;
 }
 else {
-    push @REPORT, "$device has been mounted on $mountpoint\n\n";
+    print $report "$device has been mounted on $mountpoint\n\n";
 }
 
 ################################################
@@ -123,23 +124,23 @@ if ( !$drivemount ) {
     if ($debug) { push( @rsyncopts, '--verbose' ); }
     foreach my $folder (@folders) {
         if ( !-d $folder ) {
-            push @REPORT, "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
+            print $report "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
             $error++;
             next;
         }
 
         # Actually run rsync
-        push @REPORT, "Now backing up folder '$folder':\n";
-        my $output = qx(rsync @rsyncopts $folder $mountpoint);
+        print $report "Now backing up folder '$folder':\n";
+        my $out = qx(rsync @rsyncopts $folder $mountpoint);
 
-        if ( $? != 0 and $output !~ /sent.*bytes.*received.*bytes/ ) {
-            push @REPORT, "Could not copy $folder to $mountpoint\n\n";
-            push @REPORT, $output;
+        if ( $? != 0 and $out !~ /sent.*bytes.*received.*bytes/ ) {
+            print $report "Could not copy $folder to $mountpoint\n\n";
+            print $report $out;
             $error++;
         }
         else {
-            push @REPORT, $output;
-            push @REPORT, "\n\n" if $debug;
+            print $report $out;
+            if ($debug) { print $report "\n\n"; }
         }
     }
 }
@@ -151,18 +152,18 @@ unlink $tmpfile;
 ####################### 
 
 # Unmount $device, but only if this script was what mounted it
-$drivemount = qx(umount $mountpoint 2>&1) if !$nounmount;
+if (!$nounmount) { $drivemount = qx(umount $mountpoint 2>&1); }
 
 if ( $drivemount && !$nounmount ) {
-    push @REPORT, "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
+    print $report "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
     $error++;
 }
 elsif ($nounmount) {
-    push @REPORT, "*** $device was already mounted on $mountpoint, not attemping to unmount ***\n\n";
+    print $report "*** $device was already mounted on $mountpoint, not attemping to unmount ***\n\n";
     $error++;
 }
 else {
-    push @REPORT, "\n$device has been unmounted from $mountpoint\n\n";
+    print $report "\n$device has been unmounted from $mountpoint\n\n";
 }
 
 #################### 
@@ -172,8 +173,10 @@ else {
 # Set status message for report to failed or successful based on if 
 # error messages beginning with * were found
 $date = localtime();
-push @REPORT, "Backup finished at $date\n";
+print $report "Backup finished at $date\n";
 my $status = ($error) ? "failed or couldn't rsync a specified directory" : 'successful';
+
+close $report;
 
 ######################################################
 # Send backup successful/failed message to recipient #
@@ -201,7 +204,7 @@ $smtp->datasend("To: $email_addr\n");
 $smtp->datasend("Subject: Backup $status for $hostname\n");
 $smtp->datasend("Date: $date\n");
 $smtp->datasend("\n");
-$smtp->datasend(@REPORT);
+$smtp->datasend($report_text);
 $smtp->dataend();
 $smtp->quit();
 
@@ -216,7 +219,7 @@ exit ($error) ? 1 : 0;
 
 =head1 VERSION
 
- 0.6
+ 0.7
 
 =head1 USAGE
 
