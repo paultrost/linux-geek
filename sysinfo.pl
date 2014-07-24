@@ -268,16 +268,21 @@ sub get_disk_model {
     my ($model) = ( $$smart_ref =~ /(Device\ Model.*\n)/ );
     if ( defined $model ) {
         $model =~ s/.*:\ //;
-        $model =~ s/^\s+|\s+$//g;
+        $model =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
     }
     return ($model) ? "$disk: $model\n" : "$disk: N/A\n";
 }
 
 sub get_os {
-    chomp( my $release = qx(lsb_release -d) );
+    my $release;
+    if ( -f '/etc/redhat-release' ) {
+        open my $fh, '<', '/etc/redhat-release'
+          or die $!;
+        chomp( $release = <$fh> );
+        $release =~ s/\s+$//g; #trim trailing whitespace
+        close $fh;
+    }
     chomp( my $kernel  = qx(uname -r) );
-    ( undef, $release ) = split /:/, $release;
-    $release =~ s/^\s+//s;
     return "$release | Kernel: $kernel";
 }
 
@@ -290,7 +295,7 @@ sub get_os {
 
 =head1 VERSION
 
- 1.1.2
+ 1.1.3
 
 =head1 USAGE
 
