@@ -91,21 +91,21 @@ die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
 my $space = qx(df $device | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
 die "Mount point $mountpoint is out of space.\n" if $space == 0;
 
-open( my $report, '>', \ my $report_text );
+open( my $report, '>', \ my $report_text ) or die "$!\n";
 
 #################
 # Begin @REPORT #
 #################
 
-print $report "Starting backup of $hostname at $date\n\n";
+print {$report} "Starting backup of $hostname at $date\n\n";
 
 my $drivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
 if ($drivemount) {
-    print $report "*** Could not mount $device on $mountpoint ***\n\n$drivemount\n";
+    print {$report} "*** Could not mount $device on $mountpoint ***\n\n$drivemount\n";
     $nounmount = 1;
 }
 else {
-    print $report "$device has been mounted on $mountpoint\n\n";
+    print {$report} "$device has been mounted on $mountpoint\n\n";
 }
 
 ################################################
@@ -124,23 +124,23 @@ if ( !$drivemount ) {
     if ($debug) { push( @rsyncopts, '--verbose' ); }
     foreach my $folder (@folders) {
         if ( !-d $folder ) {
-            print $report "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
+            print {$report} "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
             $error++;
             next;
         }
 
         # Actually run rsync
-        print $report "Now backing up folder '$folder':\n";
+        print {$report} "Now backing up folder '$folder':\n";
         my $out = qx(rsync @rsyncopts $folder $mountpoint);
 
         if ( $? != 0 and $out !~ /sent.*bytes.*received.*bytes/ ) {
-            print $report "Could not copy $folder to $mountpoint\n\n";
-            print $report $out;
+            print {$report} "Could not copy $folder to $mountpoint\n\n";
+            print {$report} $out;
             $error++;
         }
         else {
-            print $report $out;
-            if ($debug) { print $report "\n\n"; }
+            print {$report} $out;
+            if ($debug) { print {$report} "\n\n"; }
         }
     }
 }
@@ -155,15 +155,15 @@ unlink $tmpfile;
 if (!$nounmount) { $drivemount = qx(umount $mountpoint 2>&1); }
 
 if ( $drivemount && !$nounmount ) {
-    print $report "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
+    print {$report} "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
     $error++;
 }
 elsif ($nounmount) {
-    print $report "*** $device was already mounted on $mountpoint, not attemping to unmount ***\n\n";
+    print {$report} "*** $device was already mounted on $mountpoint, not attemping to unmount ***\n\n";
     $error++;
 }
 else {
-    print $report "\n$device has been unmounted from $mountpoint\n\n";
+    print {$report} "\n$device has been unmounted from $mountpoint\n\n";
 }
 
 #################### 
@@ -173,7 +173,7 @@ else {
 # Set status message for report to failed or successful based on if 
 # error messages beginning with * were found
 $date = localtime();
-print $report "Backup finished at $date\n";
+print {$report} "Backup finished at $date\n";
 my $status = ($error) ? "failed or couldn't rsync a specified directory" : 'successful';
 
 close $report;
