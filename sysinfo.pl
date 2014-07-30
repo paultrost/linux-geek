@@ -4,6 +4,7 @@ use 5.010;
 use strict;
 use warnings;
 use Sys::Hostname;
+use Linux::Distribution qw(distribution_name distribution_version);
 use File::Which;
 use Hardware::SensorsParser;
 use Math::Round;
@@ -274,16 +275,12 @@ sub get_disk_model {
 }
 
 sub get_os {
-    my $release;
-    if ( -f '/etc/redhat-release' ) {
-        open my $fh, '<', '/etc/redhat-release'
-          or die $!;
-        chomp( $release = <$fh> );
-        $release =~ s/\s+$//g; #trim trailing whitespace
-        close $fh;
-    }
+    my $linux = Linux::Distribution->new;
+    my $distro = $linux->distribution_name();
+    my $version = $linux->distribution_version();
     chomp( my $kernel  = qx(uname -r) );
-    return "$release | Kernel: $kernel";
+    chomp( my $arch = qx(uname -i) );
+    return "Distro: $distro $version | Arch: $arch | Kernel: $kernel";
 }
 
 
