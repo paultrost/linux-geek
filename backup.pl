@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 use Net::SMTP::SSL;
-use Authen::SASL;
 use Getopt::Long;
 use Pod::Usage;
 use Sys::Hostname;
