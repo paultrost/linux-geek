@@ -275,11 +275,12 @@ sub get_disk_model {
 }
 
 sub get_os {
-    my $linux = Linux::Distribution->new;
-    my $distro = $linux->distribution_name();
+    my $linux   = Linux::Distribution->new;
+    my $distro  = ucfirst $linux->distribution_name();
     my $version = $linux->distribution_version();
-    chomp( my $kernel  = qx(uname -r) );
-    chomp( my $arch = qx(uname -i) );
+    $version =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
+    chomp( my $kernel = qx(uname -r) );
+    chomp( my $arch   = qx(uname -i) );
     return "Distro: $distro $version | Arch: $arch | Kernel: $kernel";
 }
 
