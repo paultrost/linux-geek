@@ -293,7 +293,7 @@ sub get_os {
 
 =head1 VERSION
 
- 1.1.3
+ 1.1.4
 
 =head1 USAGE
 
