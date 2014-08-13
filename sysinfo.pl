@@ -147,8 +147,8 @@ foreach my $disk (@disks) {
     }
 }
 
-close $sensors_out;
-close $err_out;
+close $output;
+close $errors;
 
 ##################
 # Display Output #
