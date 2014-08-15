@@ -232,7 +232,7 @@ sub get_fan_speed {
 
 sub get_disk_temp {
     my $smart_ref = shift;
-    my ($temp_c) = ( $$smart_ref =~ /(Temperature_Celsius.*\n)/ );
+    my ($temp_c) = $$smart_ref =~ /(Temperature_Celsius.*\n)/;
 
     if ( defined $temp_c) {
         chomp $temp_c;
