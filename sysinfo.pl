@@ -197,8 +197,7 @@ sub item {
 }
 
 sub value {
-    my $text    = shift;
-    my $newline = shift;
+    my ( $text, $newline ) = @_;
     $newline //= 1;
     if ($newline) { $text .= "\n" };
     return ($color) ? BOLD YELLOW $text : $text;
@@ -266,7 +265,7 @@ sub get_disk_health {
 
 sub get_disk_model {
     my ( $disk, $smart_ref ) = @_;
-    my ($model) = ( $$smart_ref =~ /(Device\ Model.*\n)/ );
+    my ($model) = $$smart_ref =~ /(Device\ Model.*\n)/;
     if ( defined $model ) {
         $model =~ s/.*:\ //;
         $model =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
@@ -293,7 +292,7 @@ sub get_os {
 
 =head1 VERSION
 
- 1.1.4
+ 1.1.5
 
 =head1 USAGE
 
