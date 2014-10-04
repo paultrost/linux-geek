@@ -1,3 +1,4 @@
+##TODO -- when run with --errors, host info should still display
 #!/usr/bin/env perl 
 
 use 5.010;
@@ -7,11 +8,12 @@ use Sys::Hostname;
 use Linux::Distribution qw(distribution_name distribution_version);
 use File::Which;
 use Hardware::SensorsParser;
-use Math::Round;
 use Sys::Info;
 use Sys::Load qw/getload uptime/;
 use Time::Duration;
 use Term::ANSIColor qw(:constants);
+use Math::Round;
+use Disk::SMART;
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => 'experimental'; # turn off smartmatch warnings
 
@@ -28,7 +30,8 @@ my $disk_temp_warn = 40;
 # Set list of disks on the system #
 ###################################
 
-my @disks = glob '/dev/*d[a-z]';
+chomp( my @disks = glob '/dev/*d[a-z]' );
+my $smart = Disk::SMART->new(@disks);
 
 #***************************************#
 # NOTHING BELOW HERE SHOULD BE CHANGED! #
@@ -123,14 +126,10 @@ print {$output} header('Drive Temperature(s) and Status:');
 print {$output} "-------------------------------\n";
 my $disk_models;
 foreach my $disk (@disks) {
-    chomp $disk;
-    my $smart_out = qx(smartctl -a $disk);
-    my $smart_out_ref = \$smart_out;
+    my $disk_health = $smart->get_disk_health($disk);
+    $disk_models .= $smart->get_disk_model($disk) . "\n";
 
-    my $disk_health = get_disk_health($smart_out_ref);
-    $disk_models .= get_disk_model( $disk, $smart_out_ref );
-
-    my ( $temp_c, $temp_f ) = get_disk_temp($smart_out_ref);
+    my ( $temp_c, $temp_f ) = $smart->get_disk_temp($disk);
     if ( $temp_c !~ 'N/A' ) {
         print {$output} item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ", 0);
         print {$output} item('Health: ') . value($disk_health);
@@ -229,50 +228,6 @@ sub get_fan_speed {
     return ( $speed_value ne '0' ) ? $speed_value : 'N/A';
 }
 
-sub get_disk_temp {
-    my $smart_ref = shift;
-    my ($temp_c) = $$smart_ref =~ /(Temperature_Celsius.*\n)/;
-
-    if ( defined $temp_c) {
-        chomp $temp_c;
-        $temp_c =~ s/ //g;
-        $temp_c =~ s/.*-//;
-        $temp_c =~ s/\(.*\)//;
-    }
-
-    if ( !$temp_c || $$smart_ref =~ qr/S.M.A.R.T. not available/x ) {
-        return 'N/A';
-    }
-    else {
-        my $temp_f = round( ( $temp_c * 9 ) / 5 + 32 );
-        return ( $temp_c, $temp_f );
-    }
-}
-
-sub get_disk_health {
-    my $smart_ref = shift;
-    my ($health) = ( $$smart_ref =~ /(SMART overall-health self-assessment.*\n)/ );
-
-    if ( defined $health and $health =~ /PASSED|FAILED/x ) {
-        $health =~ s/.*: //;
-        chomp $health;
-        return $health;
-    }
-    else {
-        return 'N/A';
-    }
-}
-
-sub get_disk_model {
-    my ( $disk, $smart_ref ) = @_;
-    my ($model) = $$smart_ref =~ /(Device\ Model.*\n)/;
-    if ( defined $model ) {
-        $model =~ s/.*:\ //;
-        $model =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
-    }
-    return ($model) ? "$disk: $model\n" : "$disk: N/A\n";
-}
-
 sub get_os {
     my $linux   = Linux::Distribution->new;
     my $distro  = ucfirst $linux->distribution_name();
@@ -292,7 +247,7 @@ sub get_os {
 
 =head1 VERSION
 
- 1.1.5
+ 1.2
 
 =head1 USAGE
 
