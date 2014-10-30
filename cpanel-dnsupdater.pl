@@ -32,9 +32,9 @@ pod2usage(1) if $help;
 #-------------------------------------------------------------------------------
 #  Set user account parameters, should probably be moved to a config file
 #-------------------------------------------------------------------------------
-my $cpanel_domain = "trostfamily.org";
-my $user          = "trostfam";
-my $pass          = "b1t3m313";
+my $cpanel_domain = "";
+my $user          = "";
+my $pass          = "";
 my $auth          = "Basic " . MIME::Base64::encode( $user . ":" . $pass );
 
 #-------------------------------------------------------------------------------
@@ -78,8 +78,7 @@ sub get_zone_data {
     $hostname .= ".$domain.";
 
     my $xml      = XML::Simple->new;
-    my $request  = HTTP::Request->new( GET => "https://$cpanel_domain:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=fetchzone&domain=$domain" )
-      or die "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
+    my $request  = HTTP::Request->new( GET => "https://$cpanel_domain:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=fetchzone&domain=$domain" );
 
     $request->header( Authorization => $auth );
     my $response = $ua->request($request);
@@ -87,7 +86,12 @@ sub get_zone_data {
     my $linenumber = '';
     my $address;
     my $found_hostname;
-    my $zone = $xml->XMLin( $response->content );
+    my $zone;
+    eval { $zone = $xml->XMLin( $response->content ) };
+    print "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
+    print "Please ensure \$cpanel_domain, \$user, and \$pass are set correctly.\n";
+    die if !defined $zone;
+
     if ( $zone->{'data'}->{'status'} eq "1" ) {
         my $count = @{ $zone->{'data'}->{'record'} };
         my $oldip = "";
