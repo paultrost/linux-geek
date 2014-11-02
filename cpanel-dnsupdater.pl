@@ -10,32 +10,42 @@ use Getopt::Long;
 use Pod::Usage;
 
 
-pod2usage(1) if !@ARGV;
-
 #-------------------------------------------------------------------------------
 #  Parse command line options
 #-------------------------------------------------------------------------------
+pod2usage(1) if !@ARGV;
+
+my $help;
 my $param_domain;
 my $param_host;
 my $param_ip;
-my $help;
+my $cpanel_user;
+my $cpanel_pass;
+my $cpanel_domain;
 
 GetOptions(
-    'help|?'   => \$help,
-    'domain=s' => \$param_domain,
-    'host=s'   => \$param_host,
-    'ip=s'     => \$param_ip,
+    'help|?'          => \$help,
+    'domain=s'        => \$param_domain,
+    'host=s'          => \$param_host,
+    'cpanel_user=s'   => \$cpanel_user,
+    'cpanel_pass=s'   => \$cpanel_pass,
+    'cpanel_domain=s' => \$cpanel_domain,
+    'ip=s'            => \$param_ip,
 );
 
 pod2usage(1) if $help;
 
+die "Required parameters not specified\n"
+  unless $param_domain
+  and $param_host
+  and $cpanel_user
+  and $cpanel_pass
+  and $cpanel_domain;
+
 #-------------------------------------------------------------------------------
 #  Set user account parameters, should probably be moved to a config file
 #-------------------------------------------------------------------------------
-my $cpanel_domain = "";
-my $user          = "";
-my $pass          = "";
-my $auth          = "Basic " . MIME::Base64::encode( $user . ":" . $pass );
+my $auth          = "Basic " . MIME::Base64::encode( $cpanel_user . ":" . $cpanel_pass );
 
 #-------------------------------------------------------------------------------
 #  Disable SSL validation
@@ -50,25 +60,26 @@ my $ua = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 } );
 my $url = "http://cpanel.net/myip";
 if ( !defined $param_ip ) {
     $param_ip = get($url)
-      or die "Couldn't get detected remote IP, please check the URL $url.\n";
+      or die "Couldn't detect remote IP, please check the URL $url.\n";
     chomp $param_ip;
 }
     
 my ( $linenumber, $current_ip ) = get_zone_data( $param_domain, $param_host );
 
 if ( $current_ip eq $param_ip ) {
-    print "Detected remote IP $param_ip matches current IP $current_ip, no IP update needed.\n";
+    print "Detected remote IP $param_ip matches current IP $current_ip; no IP update needed.\n";
     exit(0);
 }
 
 print "Trying to update $param_host IP to $param_ip ...\n";
 my $result = set_host_ip( $param_domain, $linenumber, $param_ip );
-if ( $result eq "1" ) {
+if ( $result eq "succeeded" ) {
     print "Update successful! Changed $current_ip to $param_ip\n";
     exit(0);
 }
 else {
-    print "$result\n";
+    print "Update not successful, $result\n";
+    exit(1);
 }
 
 exit(1);
@@ -88,9 +99,11 @@ sub get_zone_data {
     my $found_hostname;
     my $zone;
     eval { $zone = $xml->XMLin( $response->content ) };
-    print "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
-    print "Please ensure \$cpanel_domain, \$user, and \$pass are set correctly.\n";
-    die if !defined $zone;
+    if (!defined $zone) {
+        print "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
+        print "Please ensure \$cpanel_domain, \$cpanel_user, and \$cpanel_pass are set correctly.\n";
+        die;
+    }
 
     if ( $zone->{'data'}->{'status'} eq "1" ) {
         my $count = @{ $zone->{'data'}->{'record'} };
@@ -122,14 +135,9 @@ sub set_host_ip {
     my $request    = HTTP::Request->new( GET => "https://$cpanel_domain:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=edit_zone_record&domain=$domain&line=$linenumber&address=$newip" );
     $request->header( Authorization => $auth );
     my $response   = $ua->request($request);
-    my $reply = $xml->XMLin( $response->content );
-    if ( $reply->{'data'}->{'status'} eq "1" ) {
-        $result = "1";
-    }
-    else {
-        $result = $reply->{'data'}->{'statusmsg'};
-    }
-    return ($result);
+    my $reply      = $xml->XMLin( $response->content );
+    my $status     = $reply->{'data'}->{'status'};
+    return ($status == 1) ? 'succeeded' : $reply->{'data'}->{'statusmsg'};
 }
 
 
@@ -144,7 +152,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.1
+ 0.2
 
 =cut
 
@@ -167,8 +175,11 @@ sub set_host_ip {
 
 =head2  Required
 
-  --host        Host name to update in the domain's zonefile. eg. 'www'
-  --domain      Name of the domain to update
+  --host          Host name to update in the domain's zonefile. eg. 'www'
+  --domain        Name of the domain to update
+  --cpanel_user   cPanel account login name
+  --cpanel_pass   cPanel account password
+  --cpanel_domain cPanel account domain name
 
 =head2  Optional
 
