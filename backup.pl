@@ -44,7 +44,7 @@ my $email_auth_addr;
 my $email_auth_pass;
 my $email_addr = $email_auth_addr;
 my $outbound_server;
-my $folders;
+my @folders;
 my $tmpfile = '/tmp/backuprunning';
 
 # Get the options from the command line
@@ -61,7 +61,7 @@ GetOptions(
     'email_auth_pass=s' => \$email_auth_pass,
     'email_addr=s'      => \$email_addr,
     'outbound_server=s' => \$outbound_server,
-    'folders=s'         => \$folders,
+    'folders=s'         => \@folders,
 );
 
 # Display help screen if -help option specified
@@ -119,7 +119,6 @@ close $tmp_filename;
 # this is testing captured output of the mount command which will only
 # have output in a failure
 if ( !$drivemount ) {
-    my @folders = split( / / , $folders );
     if ($debug) { push( @rsyncopts, '--verbose' ); }
     foreach my $folder (@folders) {
         if ( !-d $folder ) {
@@ -219,7 +218,7 @@ exit ($error) ? 1 : 0;
 
 =head1 VERSION
 
- 0.7
+ 0.7.1
 
 =cut
 
