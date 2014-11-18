@@ -109,9 +109,9 @@ sub get_zone_data {
         my $count = @{ $zone->{'data'}->{'record'} };
         my $item = 0;
         while ( $item <= $count ) {
-            my $name = $zone->{'data'}->{'record'}[$item]->{'name'} // '';
-            my $type = $zone->{'data'}->{'record'}[$item]->{'type'} // '';
-            if ( ( $name eq $hostname ) && ( $type eq 'A' ) ) {
+            my $name = $zone->{'data'}->{'record'}[$item]->{'name'};
+            my $type = $zone->{'data'}->{'record'}[$item]->{'type'};
+            if ( ( defined($name) && $name eq $hostname ) && ( $type eq 'A' ) ) {
                 $linenumber  = $zone->{'data'}->{'record'}[$item]->{'Line'};
                 $address     = $zone->{'data'}->{'record'}[$item]->{'address'};
                 $found_hostname = 1;
@@ -150,7 +150,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.3
+ 0.3.1
 
 =cut
 
@@ -187,7 +187,7 @@ sub set_host_ip {
 
 =head1 EXIT STATUS
 
- Exits with 1 if there was any issue updating the record, otherwise 0.
+ Exits with 1 if there was any issue updating the record. Exits with 0 if IP was either changed, or the pulled IP matches the specified IP.
 
 =head1 AUTHOR
 
