@@ -1,6 +1,8 @@
 #!/usr/bin/env perl
 
 use strict;
+use warnings;
+
 use LWP::UserAgent;
 use MIME::Base64;
 use XML::Simple;
@@ -45,7 +47,7 @@ die "Required parameters not specified\n"
 #-------------------------------------------------------------------------------
 #  Set user account parameters, should probably be moved to a config file
 #-------------------------------------------------------------------------------
-my $auth          = "Basic " . MIME::Base64::encode( $cpanel_user . ":" . $cpanel_pass );
+my $auth = 'Basic ' . MIME::Base64::encode( $cpanel_user . ':' . $cpanel_pass );
 
 #-------------------------------------------------------------------------------
 #  Disable SSL validation
@@ -57,15 +59,15 @@ my $ua = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 } );
 #-------------------------------------------------------------------------------
 
 # Set update IP to detected remote IP address if IP not specified on cmd line
-my $url = "http://cpanel.net/myip";
+my $url = 'http://cpanel.net/myip';
 if ( !defined $param_ip ) {
     $param_ip = get($url)
       or die "Couldn't detect remote IP, please check the URL $url.\n";
     chomp $param_ip;
 }
     
+# Get current host IP address and see if it matches the given IP
 my ( $linenumber, $current_ip ) = get_zone_data( $param_domain, $param_host );
-
 if ( $current_ip eq $param_ip ) {
     print "Detected remote IP $param_ip matches current IP $current_ip; no IP update needed.\n";
     exit(0);
@@ -73,7 +75,7 @@ if ( $current_ip eq $param_ip ) {
 
 print "Trying to update $param_host IP to $param_ip ...\n";
 my $result = set_host_ip( $param_domain, $linenumber, $param_ip );
-if ( $result eq "succeeded" ) {
+if ( $result eq 'succeeded' ) {
     print "Update successful! Changed $current_ip to $param_ip\n";
     exit(0);
 }
@@ -88,35 +90,33 @@ sub get_zone_data {
     my ( $domain, $hostname ) = @_;
     $hostname .= ".$domain.";
 
-    my $xml      = XML::Simple->new;
-    my $request  = HTTP::Request->new( GET => "https://$cpanel_domain:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=fetchzone&domain=$domain" );
-
+    my $xml     = XML::Simple->new;
+    my $request = HTTP::Request->new( GET => "https://$cpanel_domain:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=fetchzone&domain=$domain" );
     $request->header( Authorization => $auth );
     my $response = $ua->request($request);
 
-    my $linenumber = '';
-    my $address;
-    my $found_hostname;
     my $zone;
     eval { $zone = $xml->XMLin( $response->content ) };
-    if (!defined $zone) {
+    if ( !defined $zone ) {
         print "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
         print "Please ensure \$cpanel_domain, \$cpanel_user, and \$cpanel_pass are set correctly.\n";
         die;
     }
 
-    if ( $zone->{'data'}->{'status'} eq "1" ) {
+    # Assuming we find the zone, iterate over it and find the $hostname record
+    my ( $linenumber, $address, $found_hostname );
+    if ( $zone->{'data'}->{'status'} eq '1' ) {
         my $count = @{ $zone->{'data'}->{'record'} };
-        my $oldip = "";
-        for ( my $item = 0 ; $item <= $count ; $item++ ) {
-            my $name = $zone->{'data'}->{'record'}[$item]->{'name'};
-            my $type = $zone->{'data'}->{'record'}[$item]->{'type'};
-
-            if ( ( $name eq $hostname ) && ( $type eq "A" ) ) {
+        my $item = 0;
+        while ( $item <= $count ) {
+            my $name = $zone->{'data'}->{'record'}[$item]->{'name'} // '';
+            my $type = $zone->{'data'}->{'record'}[$item]->{'type'} // '';
+            if ( ( $name eq $hostname ) && ( $type eq 'A' ) ) {
                 $linenumber  = $zone->{'data'}->{'record'}[$item]->{'Line'};
                 $address     = $zone->{'data'}->{'record'}[$item]->{'address'};
                 $found_hostname = 1;
             }
+            $item++;
         }
     }
     else {
@@ -130,16 +130,14 @@ sub get_zone_data {
 sub set_host_ip {
     my ( $domain, $linenumber, $newip ) = @_;
 
-    my $result     = "";
     my $xml        = XML::Simple->new;
     my $request    = HTTP::Request->new( GET => "https://$cpanel_domain:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=edit_zone_record&domain=$domain&line=$linenumber&address=$newip" );
     $request->header( Authorization => $auth );
     my $response   = $ua->request($request);
     my $reply      = $xml->XMLin( $response->content );
     my $status     = $reply->{'data'}->{'status'};
-    return ($status == 1) ? 'succeeded' : $reply->{'data'}->{'statusmsg'};
+    return ( $status == 1 ) ? 'succeeded' : $reply->{'data'}->{'statusmsg'};
 }
-
 
 
 =pod
@@ -152,7 +150,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.2
+ 0.3
 
 =cut
 
