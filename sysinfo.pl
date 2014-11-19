@@ -1,4 +1,3 @@
-##TODO -- when run with --errors, host info should still display
 #!/usr/bin/env perl 
 
 use 5.010;
@@ -141,7 +140,7 @@ foreach my $disk (@disks) {
         }
     }
     else {
-        print {$output} item("$disk Temperature: ") . value('N/A ', 0);
+        print {$output} item("$disk Temperature: ") . value( 'N/A ', 0 );
         print {$output} item('Health: ') . value($disk_health);
     }
 }
@@ -160,13 +159,9 @@ if ( !$errorsonly ) {
     my $proc     = $info->device('CPU');
     my $cpu      = scalar $proc->identify;
 
-    my $memstats = qx( free -m | grep Mem | awk {'print \$2,\$3,\$4,\$5,\$6,\$7'} );
-    my ( $m_total, $m_used, $m_free, $m_shared, $m_buffered, $m_cached ) = split ' ', $memstats;
+    my ( $m_total, $m_used, $m_free, $m_shared, $m_buffered, $m_cached, $s_total, $s_used, $s_free ) = get_mem_stats();
     my $memory = "${m_total}M Total: ${m_used}M Used, ${m_free}M Free, ${m_buffered}M Buffered, ${m_cached}M Cached";
-
-    my $swapstats = qx( free -m | grep Swap | awk {'print \$2,\$3,\$4'} );
-    my ( $s_total, $s_used, $s_free ) = split ' ', $swapstats;
-    my $swap = "${s_total}M Total: ${s_used}M Used, ${s_free}M Free";
+    my $swap   = "${s_total}M Total: ${s_used}M Used, ${s_free}M Free";
 
     my $uptime  = duration( int uptime() );
     my $sysload = ( getload() )[0];
@@ -233,9 +228,35 @@ sub get_os {
     my $distro  = ucfirst $linux->distribution_name();
     my $version = $linux->distribution_version();
     $version =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
-    chomp( my $kernel = qx(uname -r) );
-    chomp( my $arch   = qx(uname -i) );
+
+    open( my $OUT, '-|', 'uname -r' ) or die "uname command could not be executed\n";
+    chomp( my $kernel = <$OUT> );
+    close $OUT;
+
+    open( my $OUT, '-|', 'uname -i' ) or die "uname command could not be executed\n";
+    chomp( my $arch = <$OUT> );
+    close $OUT;
+
     return "Distro: $distro $version | Arch: $arch | Kernel: $kernel";
+}
+
+sub get_mem_stats {
+    open( my $OUT, '-|', 'free -m' ) or die "free command could not be executed\n";
+    my @raw_stats = <$OUT>;
+    close $OUT;
+
+    my @stats_processed;
+    my @stats_lines;
+    foreach my $line (@raw_stats) {
+        next if $line !~ /Mem|Swap/;
+        chomp $line;
+        $line =~ s/\S\K +/ /g; #replace multiple spaces with single space
+        @stats_lines = split( / /, $line );
+        foreach (@stats_lines) {
+            if ($_ =~ /[0-9]/ ) { push @stats_processed, $_ };
+        }
+    }
+    return @stats_processed;
 }
 
 
@@ -247,7 +268,7 @@ sub get_os {
 
 =head1 VERSION
 
- 1.2
+ 1.3
 
 =head1 USAGE
 
