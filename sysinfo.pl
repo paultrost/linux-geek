@@ -25,6 +25,12 @@ my $cpu_temp_warn  = 65;
 my $mb_temp_warn   = 60;
 my $disk_temp_warn = 40;
 
+#######################################
+# Stop if not called as the root user #
+#######################################
+
+die "This script has to be run as root!\n" if ( $> != 0 );
+
 ###################################
 # Set list of disks on the system #
 ###################################
@@ -35,12 +41,6 @@ my $smart = Disk::SMART->new(@disks);
 #***************************************#
 # NOTHING BELOW HERE SHOULD BE CHANGED! #
 #***************************************#
-
-#######################################
-# Stop if not called as the root user #
-#######################################
-
-die "This script has to be run as root!\n" if ( $> != 0 );
 
 ###############################################
 # Set flag if -errorsonly option is specified #
@@ -229,29 +229,28 @@ sub get_os {
     my $version = $linux->distribution_version();
     $version =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
 
-    open( my $OUT, '-|', 'uname -r' ) or die "uname command could not be executed\n";
-    chomp( my $kernel = <$OUT> );
-    close $OUT;
+    open( my $kernel_out, '-|', 'uname -r' ) or die "uname command could not be executed\n";
+    chomp( my $kernel = <$kernel_out> );
+    close $kernel_out;
 
-    open( my $OUT, '-|', 'uname -i' ) or die "uname command could not be executed\n";
-    chomp( my $arch = <$OUT> );
-    close $OUT;
+    open( my $arch_out, '-|', 'uname -i' ) or die "uname command could not be executed\n";
+    chomp( my $arch = <$arch_out> );
+    close $arch_out;
 
     return "Distro: $distro $version | Arch: $arch | Kernel: $kernel";
 }
 
 sub get_mem_stats {
-    open( my $OUT, '-|', 'free -m' ) or die "free command could not be executed\n";
-    my @raw_stats = <$OUT>;
-    close $OUT;
+    open( my $stats_out, '-|', 'free -m' ) or die "free command could not be executed\n";
+    my @raw_stats = <$stats_out>;
+    close $stats_out;
 
     my @stats_processed;
     my @stats_lines;
     foreach my $line (@raw_stats) {
         next if $line !~ /Mem|Swap/;
         chomp $line;
-        $line =~ s/\S\K +/ /g; #replace multiple spaces with single space
-        @stats_lines = split( / /, $line );
+        @stats_lines = split( /\s* /, $line );
         foreach (@stats_lines) {
             if ($_ =~ /[0-9]/ ) { push @stats_processed, $_ };
         }
@@ -268,7 +267,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3
+ 1.3.1
 
 =head1 USAGE
 
