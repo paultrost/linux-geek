@@ -12,7 +12,12 @@ use Sys::Hostname;
 ## USER CONFIGURABLE VARIABLES ##
 #################################
 
-my @rsyncopts = qw( -au --delete );
+my @rsyncopts = qw(
+--verbose
+--archive
+--update
+--delete
+);
 
 ############################################################################
 ## Stop if not called as the root user or if a previous run is still going #
@@ -40,11 +45,12 @@ my $debug_smtp;
 my $device;
 my $mountpoint;
 my $fstype;
-my $email_auth_addr;
+my $email_auth_user;
 my $email_auth_pass;
-my $email_addr = $email_auth_addr;
+my $email_addr = $email_auth_user;
 my $outbound_server;
 my @folders;
+my @excludes;
 my $tmpfile = '/tmp/backuprunning';
 
 # Get the options from the command line
@@ -57,11 +63,12 @@ GetOptions(
     'device=s'          => \$device,
     'mountpoint=s'      => \$mountpoint,
     'fstype=s'          => \$fstype,
-    'email_auth_addr=s' => \$email_auth_addr,
+    'email_auth_user=s' => \$email_auth_user,
     'email_auth_pass=s' => \$email_auth_pass,
     'email_addr=s'      => \$email_addr,
     'outbound_server=s' => \$outbound_server,
-    'folders=s'         => \@folders,
+    'folder=s'          => \@folders,
+    'exclude=s'         => \@excludes,
 );
 
 # Display help screen if -help option specified
@@ -69,7 +76,18 @@ pod2usage(1) if $help;
 
 # Display error if one of the required parameters isn't specified
 die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
-  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_addr and $email_auth_pass and $outbound_server and $folders );
+  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_user and $email_auth_pass and $outbound_server and @folders );
+
+############################
+# Build rsync options list #
+############################
+
+if ($debug) { push( @rsyncopts, '--verbose' ); }
+if (@excludes) {
+    foreach my $item (@excludes) {
+        push( @rsyncopts, "--exclude $item" );
+    }
+}
 
 ###############################
 # Additional variables needed #
@@ -87,24 +105,25 @@ my $date     = localtime();
 die "$device is not a valid block device\n"          if ( !-b $device );
 die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
 
-my $space = qx(df $device | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
-die "Mount point $mountpoint is out of space.\n" if $space == 0;
-
 open( my $report, '>', \ my $report_text ) or die "$!\n";
 
 #################
 # Begin @REPORT #
 #################
 
-print {$report} "Starting backup of $hostname at $date\n\n";
-
-my $drivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
-if ($drivemount) {
-    print {$report} "*** Could not mount $device on $mountpoint ***\n\n$drivemount\n";
+my $nodrivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
+if ($nodrivemount) {
+    print {$report} "*** Could not mount $device on $mountpoint ***\n\n$nodrivemount\n";
     $nounmount = 1;
 }
 else {
     print {$report} "$device has been mounted on $mountpoint\n\n";
+}
+
+my $space = qx(df $device | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
+if ( $space == 0 ) {
+    system( 'umount', $mountpoint );
+    die "Mount point $mountpoint is out of space.\n";
 }
 
 ################################################
@@ -115,11 +134,10 @@ open( my $tmp_filename, '>', $tmpfile )
     or die "Could not open $tmpfile, $!\n";
 close $tmp_filename;
 
-# Testing for false $drivemount seems backwards yes, but keep in mind
+# Testing for false $nodrivemount seems backwards yes, but keep in mind
 # this is testing captured output of the mount command which will only
 # have output in a failure
-if ( !$drivemount ) {
-    if ($debug) { push( @rsyncopts, '--verbose' ); }
+if ( !$nodrivemount ) {
     foreach my $folder (@folders) {
         if ( !-d $folder ) {
             print {$report} "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
@@ -129,7 +147,7 @@ if ( !$drivemount ) {
 
         # Actually run rsync
         print {$report} "Now backing up folder '$folder':\n";
-        my $out = qx(rsync @rsyncopts $folder $mountpoint);
+        my $out = qx( rsync @rsyncopts $folder $mountpoint 2>&1 );
 
         if ( $? != 0 and $out !~ /sent.*bytes.*received.*bytes/ ) {
             print {$report} "Could not copy $folder to $mountpoint\n\n";
@@ -150,10 +168,10 @@ unlink $tmpfile;
 ####################### 
 
 # Unmount $device, but only if this script was what mounted it
-if (!$nounmount) { $drivemount = qx(umount $mountpoint 2>&1); }
+if (!$nounmount) { $nodrivemount = qx(umount $mountpoint 2>&1); }
 
-if ( $drivemount && !$nounmount ) {
-    print {$report} "*** $device could not be unmounted from ${mountpoint} ***:\n\n $drivemount\n\n";
+if ( $nodrivemount && !$nounmount ) {
+    print {$report} "*** $device could not be unmounted from ${mountpoint} ***:\n\n $nodrivemount\n\n";
     $error++;
 }
 elsif ($nounmount) {
@@ -193,11 +211,11 @@ my $smtp      = $smtp_method->new(
     Debug           => $debug_val,
 ) or die "Could not connect to $outbound_server using port $smtp_port\n$!\n";
 
-$smtp->auth( $email_auth_addr, $email_auth_pass );
-$smtp->mail($email_auth_addr);
+$smtp->auth( $email_auth_user, $email_auth_pass );
+$smtp->mail($email_auth_user);
 $smtp->to($email_addr);
 $smtp->data();
-$smtp->datasend("From: $email_auth_addr\n");
+$smtp->datasend("From: $email_auth_user\n");
 $smtp->datasend("To: $email_addr\n");
 $smtp->datasend("Subject: Backup $status for $hostname\n");
 $smtp->datasend("\n");
@@ -218,7 +236,7 @@ exit ($error) ? 1 : 0;
 
 =head1 VERSION
 
- 0.7.1
+ 0.7.2
 
 =cut
 
@@ -227,7 +245,7 @@ exit ($error) ? 1 : 0;
  backup.pl [options] [parameters]
 
  Example:
- backup.pl --device /dev/sdc1 --mountpoint /backup --fstype ext4 --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder "/etc /usr/local/ /home"
+ backup.pl --device /dev/sdc1 --mountpoint /backup --fstype ext4 --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder /etc --folder /usr/local/ --folder /home --exclude Movied
 
 =cut
 
@@ -244,11 +262,11 @@ exit ($error) ? 1 : 0;
  --device          Block device to mount
  --mountpoint      Directory to mount device at
  --fstype          Filesystem type on the device (ext4, ntfs, etc..)
- --email_auth_addr Email address for SMTP Auth
+ --email_auth_user Email address for SMTP Auth
  --email_auth_pass Password for SMTP Auth (use \ to escape characters)
- --email_addr      Email address to send backup report to (defaults to email_auth_addr)
+ --email_addr      Email address to send backup report to (defaults to email_auth_user)
  --outbound_server Server to send mail through
- --folders         Directories to back up (for multiple folders, see example)
+ --folder          Directory to back up (for multiple directories see example)
 
 =head2  Optional
 
@@ -257,6 +275,7 @@ exit ($error) ? 1 : 0;
  --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
  --debug           Enable verbose output of rsync for debugging
  --debug_smtp      Enable verbose screen output for SMTP transaction emailing the report
+ --exclude         File / Directory to be excluded from backup. For a directory, its subdirectories will also be excluded
 
 =cut
 
