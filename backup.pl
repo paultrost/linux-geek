@@ -13,7 +13,6 @@ use Sys::Hostname;
 #################################
 
 my @rsyncopts = qw(
---verbose
 --archive
 --update
 --delete
@@ -236,7 +235,7 @@ exit ($error) ? 1 : 0;
 
 =head1 VERSION
 
- 0.7.2
+ 0.7.3
 
 =cut
 
