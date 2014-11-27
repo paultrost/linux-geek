@@ -10,6 +10,8 @@ use LWP::Simple;
 use Socket;
 use Getopt::Long;
 use Pod::Usage;
+use Sys::Hostname;
+use Net::SMTP::SSL;
 
 
 #-------------------------------------------------------------------------------
@@ -18,21 +20,28 @@ use Pod::Usage;
 pod2usage(1) if !@ARGV;
 
 my $help;
-my $param_domain;
-my $param_host;
-my $param_ip;
-my $cpanel_user;
-my $cpanel_pass;
-my $cpanel_domain;
+my ( $param_domain, $param_host, $param_ip );
+my ( $cpanel_user, $cpanel_pass, $cpanel_domain );
+my ( $email_auth_user, $email_auth_pass );
+my $helo       = hostname();
+my $smtp_port  = '587';
+my $email_addr = $email_auth_user;
+my $outbound_server;
 
 GetOptions(
-    'help|?'          => \$help,
-    'domain=s'        => \$param_domain,
-    'host=s'          => \$param_host,
-    'cpanel_user=s'   => \$cpanel_user,
-    'cpanel_pass=s'   => \$cpanel_pass,
-    'cpanel_domain=s' => \$cpanel_domain,
-    'ip=s'            => \$param_ip,
+    'help|?'            => \$help,
+    'domain=s'          => \$param_domain,
+    'host=s'            => \$param_host,
+    'cpanel_user=s'     => \$cpanel_user,
+    'cpanel_pass=s'     => \$cpanel_pass,
+    'cpanel_domain=s'   => \$cpanel_domain,
+    'ip=s'              => \$param_ip,
+    'helo=s'            => \$helo,
+    'smtp_port=s'       => \$smtp_port,
+    'email_auth_user=s' => \$email_auth_user,
+    'email_auth_pass=s' => \$email_auth_pass,
+    'email_addr=s'      => \$email_addr,
+    'outbound_server=s' => \$outbound_server,
 );
 
 pod2usage(1) if $help;
@@ -43,6 +52,9 @@ die "Required parameters not specified\n"
   and $cpanel_user
   and $cpanel_pass
   and $cpanel_domain;
+
+my $send_email = 1 if $email_addr;
+my $status;
 
 #-------------------------------------------------------------------------------
 #  Set user account parameters, should probably be moved to a config file
@@ -61,30 +73,62 @@ my $ua = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 } );
 # Set update IP to detected remote IP address if IP not specified on cmd line
 my $url = 'http://cpanel.net/myip';
 if ( !defined $param_ip ) {
-    $param_ip = get($url)
-      or die "Couldn't detect remote IP, please check the URL $url.\n";
+    $status = "Couldn't detect remote IP, please check the URL $url.\n";
+    $param_ip = get($url);
+    if (!$param_ip) {
+        ($send_email) ? send_email($status) : print $status;
+        exit(1);
+    }
     chomp $param_ip;
 }
     
 # Get current host IP address and see if it matches the given IP
 my ( $linenumber, $current_ip ) = get_zone_data( $param_domain, $param_host );
 if ( $current_ip eq $param_ip ) {
-    print "Detected remote IP $param_ip matches current IP $current_ip; no IP update needed.\n";
+    #print "Detected remote IP $param_ip matches current IP $current_ip; no IP update needed.\n";
     exit(0);
 }
 
-print "Trying to update $param_host IP to $param_ip ...\n";
+#print "Trying to update $param_host IP to $param_ip ...\n";
 my $result = set_host_ip( $param_domain, $linenumber, $param_ip );
 if ( $result eq 'succeeded' ) {
-    print "Update successful! Changed $current_ip to $param_ip\n";
+    $status = "Update successful! Changed $current_ip to $param_ip\n";
+    ($send_email) ? send_email($status) : print $status;
     exit(0);
 }
 else {
-    print "Update not successful, $result\n";
+    $status = "Update not successful, $result\n";
+    ($send_email) ? send_email($status) : print $status;
     exit(1);
 }
 
-exit(1);
+exit(1); #if we get here, something bad happened
+
+sub send_email {
+    my $body_text = shift;
+    my $smtp_method = ( $smtp_port eq '465' ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
+
+    # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
+    # which will output the full details of the SMTP connection
+    my $smtp = $smtp_method->new(
+        $outbound_server,
+        Port    => $smtp_port,
+        Hello   => $helo,
+        Timeout => 10,
+      )  or die "Could not connect to $outbound_server using port $smtp_port\n$!\n";
+
+    $smtp->auth( $email_auth_user, $email_auth_pass );
+    $smtp->mail($email_auth_user);
+    $smtp->to($email_addr);
+    $smtp->data();
+    $smtp->datasend("From: $email_auth_user\n");
+    $smtp->datasend("To: $email_addr\n");
+    $smtp->datasend("Subject: Ouutput of $0 for $param_host.$param_domain");
+    $smtp->datasend("\n");
+    $smtp->datasend($body_text);
+    $smtp->dataend();
+    $smtp->quit();
+}
 
 sub get_zone_data {
     my ( $domain, $hostname ) = @_;
@@ -98,32 +142,40 @@ sub get_zone_data {
     my $zone;
     eval { $zone = $xml->XMLin( $response->content ) };
     if ( !defined $zone ) {
-        print "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
-        print "Please ensure \$cpanel_domain, \$cpanel_user, and \$cpanel_pass are set correctly.\n";
-        die;
+        $status =  "Couldn't connect to $cpanel_domain to fetch zone contents for $domain\n";
+        $status .= "Please ensure \$cpanel_domain, \$cpanel_user, and \$cpanel_pass are set correctly.\n";
+        ($send_email) ? send_email($status) : print $status;
+        exit(1);
     }
 
     # Assuming we find the zone, iterate over it and find the $hostname record
     my ( $linenumber, $address, $found_hostname );
     if ( $zone->{'data'}->{'status'} eq '1' ) {
         my $count = @{ $zone->{'data'}->{'record'} };
-        my $item = 0;
+        my $item  = 0;
         while ( $item <= $count ) {
             my $name = $zone->{'data'}->{'record'}[$item]->{'name'};
             my $type = $zone->{'data'}->{'record'}[$item]->{'type'};
             if ( ( defined($name) && $name eq $hostname ) && ( $type eq 'A' ) ) {
-                $linenumber  = $zone->{'data'}->{'record'}[$item]->{'Line'};
-                $address     = $zone->{'data'}->{'record'}[$item]->{'address'};
+                $linenumber = $zone->{'data'}->{'record'}[$item]->{'Line'};
+                $address    = $zone->{'data'}->{'record'}[$item]->{'address'};
                 $found_hostname = 1;
             }
             $item++;
         }
     }
     else {
-        die "Couldn't fetch zone for $domain.\n$zone->{'event'}->{'data'}->{'statusmsg;'}\n";
+        $status = "Couldn't fetch zone for $domain.\n$zone->{'event'}->{'data'}->{'statusmsg;'}\n";
+        ($send_email) ? send_email($status) : print $status;
+        exit(1);
     }
 
-    die "No A record present for $hostname, please verify it exists in the cPanel zonefile!\n" if !$found_hostname;
+    if ( !$found_hostname ) {
+        $status = "No A record present for $hostname, please verify it exists in the cPanel zonefile!\n";
+        ($send_email) ? send_email($status) : print $status;
+        exit(1);
+    }
+
     return ( $linenumber, $address );
 }
 
@@ -135,8 +187,8 @@ sub set_host_ip {
     $request->header( Authorization => $auth );
     my $response   = $ua->request($request);
     my $reply      = $xml->XMLin( $response->content );
-    my $status     = $reply->{'data'}->{'status'};
-    return ( $status == 1 ) ? 'succeeded' : $reply->{'data'}->{'statusmsg'};
+    my $set_status = $reply->{'data'}->{'status'};
+    return ( $set_status == 1 ) ? 'succeeded' : $reply->{'data'}->{'statusmsg'};
 }
 
 
@@ -150,7 +202,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.3.1
+ 0.4
 
 =cut
 
@@ -159,13 +211,13 @@ sub set_host_ip {
  cpanel-dnsupdater.pl [options]
 
  Example:
- cpanel-dnsupdater.pl --host home --domain domain.tld
+ cpanel-dnsupdater.pl --host home --domain domain.tld --cpanel_user cptest --cpanel_pass 12345 --cpanel_domain cptest.tld
 
 =cut
 
 =head1 DESCRIPTION
 
- Updates the IP address of an A record on a cPanel hosted domain
+ Updates the IP address of an A record on a cPanel hosted domain. If no email address is supplied to the script, then all output is printed to STDOUT instead of emailed.
 
 =cut
 
@@ -181,7 +233,14 @@ sub set_host_ip {
 
 =head2  Optional
 
-  --ip          IP address to update the A record with. This defaults to the detected external IP.
+  --ip              IP address to update the A record with. This defaults to the detected external IP.
+  --email_auth_user Email address for SMTP Auth
+  --email_auth_pass Password for SMTP Auth (use \ to escape characters)
+  --email_addr      Email address to send successful/error report to (defaults to email_auth_user)
+  --outbound_server Server to send mail through
+  --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
+  --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
+
 
 =cut
 
