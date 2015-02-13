@@ -197,6 +197,7 @@ close $report;
 # Send backup successful/failed message to recipient #
 ######################################################
 
+$report_text = "Date: $date\n\n" . $report_text;
 my $smtp_method = ( $smtp_port eq '465' ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
 # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
@@ -217,7 +218,6 @@ $smtp->data();
 $smtp->datasend("From: $email_auth_user\n");
 $smtp->datasend("To: $email_addr\n");
 $smtp->datasend("Subject: Backup $status for $hostname\n");
-$smtp->datasend("\n");
 $smtp->datasend($report_text);
 $smtp->dataend();
 $smtp->quit();
