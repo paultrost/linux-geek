@@ -195,10 +195,10 @@ sub mount_device {
     }
 
     my $df = df($args{'device'});
-    print "Free space is $df->{bavail}\n"; die;
     if ( $df->{bfree} == 0 ) {
         system( 'umount', $args{'mountpoint'} );
-        die "Mount point $args{'mountpoint'} is out of space.\n";
+        print {$report} "*** Mount point $args{'mountpoint'} is out of space.***\n\n";
+        $nounmount = 1;
     }
     return;
 }
@@ -248,7 +248,7 @@ sub send_email {
 
 =head1 VERSION
 
- 0.7.3
+ 0.8
 
 =cut
 
