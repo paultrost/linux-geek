@@ -63,6 +63,8 @@ GetOptions( \%args,
     'exclude=s@',
 );
 
+$args{'email_addr'} = $args{'email_auth_user'} if !$args{'email_addr'};
+
 # Display help screen if -help option specified
 pod2usage(1) if $args{'help'};
 
@@ -71,11 +73,12 @@ die "Not all required parameters specified, run '$0 --help' and check your argum
   unless ( $args{'device'}
     and $args{'mountpoint'}
     and $args{'fstype'}
-    and $args{'email_addr'}
     and $args{'email_auth_user'}
     and $args{'email_auth_pass'}
     and $args{'outbound_server'}
     and $args{'folder'} );
+
+
 
 ############################
 # Build rsync options list #
@@ -283,6 +286,7 @@ sub send_email {
 =head2  Optional
 
  --help            Display available and required options
+ --email_addr      Email address to send backup report to (defaults to email_auth_user)
  --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
  --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
  --debug           Enable verbose output of rsync for debugging
