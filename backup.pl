@@ -36,54 +36,44 @@ pod2usage(1) if !@ARGV;
 ###########################################################
 
 # Set defaults for positional parameters
-my $help;
-my $smtp_port = '587';
-my $helo      = hostname();
-my $debug;
-my $debug_smtp;
-my $device;
-my $mountpoint;
-my $fstype;
-my $email_auth_user;
-my $email_auth_pass;
-my $email_addr = $email_auth_user;
-my $outbound_server;
-my @folders;
-my @excludes;
-my $tmpfile = '/tmp/backuprunning';
 
+my %arg_hash = (
+    smtp_port => '587',
+    helo      => hostname(),
+    tmpfile   => '/tmp/backuprunning',
+);
 # Get the options from the command line
-GetOptions(
-    'help|?'            => \$help,
-    'smtp_port=s'       => \$smtp_port,
-    'helo=s'            => \$helo,
-    'debug'             => \$debug,
-    'debug_smtp'        => \$debug_smtp,
-    'device=s'          => \$device,
-    'mountpoint=s'      => \$mountpoint,
-    'fstype=s'          => \$fstype,
-    'email_auth_user=s' => \$email_auth_user,
-    'email_auth_pass=s' => \$email_auth_pass,
-    'email_addr=s'      => \$email_addr,
-    'outbound_server=s' => \$outbound_server,
-    'folder=s'          => \@folders,
-    'exclude=s'         => \@excludes,
+GetOptions( \%arg_hash,
+    'help|?',
+    'smtp_port=s',
+    'helo=s',
+    'debug',
+    'debug_smtp',
+    'device=s',
+    'mountpoint=s',
+    'fstype=s',
+    'email_auth_user=s',
+    'email_auth_pass=s',
+    'email_addr=s',
+    'outbound_server=s',
+    'folder=s',
+    'exclude=s',
 );
 
 # Display help screen if -help option specified
-pod2usage(1) if $help;
+pod2usage(1) if $arg_hash{'help'};
 
 # Display error if one of the required parameters isn't specified
 die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
-  unless ( $device and $mountpoint and $fstype and $email_addr and $email_auth_user and $email_auth_pass and $outbound_server and @folders );
+  unless ( $arg_hash{'device'} and $arg_hash{'mountpoint'} and $arg_hash{'fstype'} and $arg_hash{'email_addr'} and $arg_hash{'email_auth_user'} and $arg_hash{'email_auth_pass'} and $arg_hash{'outbound_server'} and $arg_hash{'folder'} );
 
 ############################
 # Build rsync options list #
 ############################
 
-if ($debug) { push( @rsyncopts, '--verbose' ); }
-if (@excludes) {
-    foreach my $item (@excludes) {
+if ( $arg_hash{'debug'} ) { push( @rsyncopts, '--verbose' ); }
+if ( $arg_hash{'exclude'} ) {
+    foreach my $item ( @{ $arg_hash{'exclude'} } ) {
         push( @rsyncopts, "--exclude $item" );
     }
 }
@@ -98,11 +88,11 @@ my $hostname = hostname();
 my $date     = localtime();
 
 #######################################################
-# Check to see that $device and $mountpoint are valid #
+# Check to see that $arg_hash{'device'} and $arg_hash{'mountpoint'} are valid #
 #######################################################
 
-die "$device is not a valid block device\n"          if ( !-b $device );
-die "$mountpoint does not exist, create manually.\n" if ( !-d $mountpoint );
+die "$arg_hash{'device'} is not a valid block device\n"          if ( !-b $arg_hash{'device'} );
+die "$arg_hash{'mountpoint'} does not exist, create manually.\n" if ( !-d $arg_hash{'mountpoint'} );
 
 open( my $report, '>', \ my $report_text ) or die "$!\n";
 
@@ -110,34 +100,34 @@ open( my $report, '>', \ my $report_text ) or die "$!\n";
 # Begin @REPORT #
 #################
 
-my $nodrivemount = qx(mount $device $mountpoint -t $fstype 2>&1);
+my $nodrivemount = qx(mount $arg_hash{'device'} $arg_hash{'mountpoint'} -t $arg_hash{'fstype'} 2>&1);
 if ($nodrivemount) {
-    print {$report} "*** Could not mount $device on $mountpoint ***\n\n$nodrivemount\n";
+    print {$report} "*** Could not mount $arg_hash{'device'} on $arg_hash{'mountpoint'} ***\n\n$nodrivemount\n";
     $nounmount = 1;
 }
 else {
-    print {$report} "$device has been mounted on $mountpoint\n\n";
+    print {$report} "$arg_hash{'device'} has been mounted on $arg_hash{'mountpoint'}\n\n";
 }
 
-my $space = qx(df $device | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
+my $space = qx(df $arg_hash{'device'} | grep -v '^Filesystem' | awk 'NF=6{print \$4}NF==5{print \$3}{}');
 if ( $space == 0 ) {
-    system( 'umount', $mountpoint );
-    die "Mount point $mountpoint is out of space.\n";
+    system( 'umount', $arg_hash{'mountpoint'} );
+    die "Mount point $arg_hash{'mountpoint'} is out of space.\n";
 }
 
 ################################################
-# Rsync each folder in @folders to $mountpoint #
+# Rsync each folder in $arg_hash{'folder'} to $arg_hash{'mountpoint'} #
 ################################################
 
-open( my $tmp_filename, '>', $tmpfile )
-    or die "Could not open $tmpfile, $!\n";
+open( my $tmp_filename, '>', $arg_hash{'tmpfile'} )
+    or die "Could not open $arg_hash{'tmpfile'}, $!\n";
 close $tmp_filename;
 
 # Testing for false $nodrivemount seems backwards yes, but keep in mind
 # this is testing captured output of the mount command which will only
 # have output in a failure
 if ( !$nodrivemount ) {
-    foreach my $folder (@folders) {
+    foreach my $folder ( @{ $arg_hash{'folder'} } ) {
         if ( !-d $folder ) {
             print {$report} "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
             $error++;
@@ -146,39 +136,39 @@ if ( !$nodrivemount ) {
 
         # Actually run rsync
         print {$report} "Now backing up folder '$folder':\n";
-        my $out = qx( rsync @rsyncopts $folder $mountpoint 2>&1 );
+        my $out = qx( rsync @rsyncopts $folder $arg_hash{'mountpoint'} 2>&1 );
 
         if ( $? != 0 and $out !~ /sent.*bytes.*received.*bytes/ ) {
-            print {$report} "Could not copy $folder to $mountpoint\n\n";
+            print {$report} "Could not copy $folder to $arg_hash{'mountpoint'}\n\n";
             print {$report} $out;
             $error++;
         }
         else {
             print {$report} $out;
-            if ($debug) { print {$report} "\n\n"; }
+            if ($arg_hash{'debug'}) { print {$report} "\n\n"; }
         }
     }
 }
 
-unlink $tmpfile;
+unlink $arg_hash{'tmpfile'};
 
 ####################### 
-### Unmount $device ###
+### Unmount $arg_hash{'device'} ###
 ####################### 
 
-# Unmount $device, but only if this script was what mounted it
-if (!$nounmount) { $nodrivemount = qx(umount $mountpoint 2>&1); }
+# Unmount $arg_hash{'device'}, but only if this script was what mounted it
+if (!$nounmount) { $nodrivemount = qx(umount $arg_hash{'mountpoint'} 2>&1); }
 
 if ( $nodrivemount && !$nounmount ) {
-    print {$report} "*** $device could not be unmounted from ${mountpoint} ***:\n\n $nodrivemount\n\n";
+    print {$report} "*** $arg_hash{'device'} could not be unmounted from $arg_hash{'mountpoint'} ***:\n\n $nodrivemount\n\n";
     $error++;
 }
 elsif ($nounmount) {
-    print {$report} "*** $device was already mounted on $mountpoint, not attemping to unmount ***\n\n";
+    print {$report} "*** $arg_hash{'device'} was already mounted on $arg_hash{'mountpoint'}, not attemping to unmount ***\n\n";
     $error++;
 }
 else {
-    print {$report} "\n$device has been unmounted from $mountpoint\n\n";
+    print {$report} "\n$arg_hash{'device'} has been unmounted from $arg_hash{'mountpoint'}\n\n";
 }
 
 #################### 
@@ -198,31 +188,35 @@ close $report;
 ######################################################
 
 $report_text = "Date: $date\n\n" . $report_text;
-my $smtp_method = ( $smtp_port eq '465' ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
+my $smtp_method = ( $arg_hash{'smtp_port'} eq '465' ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
 # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
 # which will output the full details of the SMTP connection
-my $debug_val = ($debug_smtp) ? 1 : 0;
+my $debug_val = ($arg_hash{'debug_smtp'}) ? 1 : 0;
 my $smtp      = $smtp_method->new(
-    $outbound_server,
-    Port            => $smtp_port,
-    Hello           => $helo,
+    $arg_hash{'outbound_server'},
+    Port            => $arg_hash{'smtp_port'},
+    Hello           => $arg_hash{'helo'},
     Timeout         => 10,
     Debug           => $debug_val,
-) or die "Could not connect to $outbound_server using port $smtp_port\n$!\n";
+) or die "Could not connect to $arg_hash{'outbound_server'} using port $arg_hash{'smtp_port'}\n$!\n";
 
-$smtp->auth( $email_auth_user, $email_auth_pass );
-$smtp->mail($email_auth_user);
-$smtp->to($email_addr);
-$smtp->data();
-$smtp->datasend("From: $email_auth_user\n");
-$smtp->datasend("To: $email_addr\n");
-$smtp->datasend("Subject: Backup $status for $hostname\n");
-$smtp->datasend($report_text);
-$smtp->dataend();
-$smtp->quit();
+send_email();
 
 exit ($error) ? 1 : 0;
+
+sub send_email {
+    $smtp->auth( $arg_hash{'email_auth_user'}, $arg_hash{'email_auth_pass'} );
+    $smtp->mail($arg_hash{'email_auth_user'});
+    $smtp->to($arg_hash{'email_addr'});
+    $smtp->data();
+    $smtp->datasend("From: $arg_hash{'email_auth_user'}\n");
+    $smtp->datasend("To: $arg_hash{'email_addr'}\n");
+    $smtp->datasend("Subject: Backup $status for $hostname\n");
+    $smtp->datasend($report_text);
+    $smtp->dataend();
+    $smtp->quit();
+}
 
 
 =pod
