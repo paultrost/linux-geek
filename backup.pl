@@ -63,7 +63,7 @@ GetOptions( \%args,
     'exclude=s@',
 );
 
-$args{'email_addr'} = $args{'email_auth_user'} if !$args{'email_addr'};
+$args{'email_addr'} ||= $args{'email_auth_user'};
 
 # Display help screen if -help option specified
 pod2usage(1) if $args{'help'};
