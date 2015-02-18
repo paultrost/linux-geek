@@ -16,6 +16,7 @@ use Net::SMTP::SSL;
 #-------------------------------------------------------------------------------
 #  Parse command line options
 #-------------------------------------------------------------------------------
+
 pod2usage(1) if !@ARGV;
 
 my %args = (
@@ -42,12 +43,11 @@ die "Required parameters not specified\n"
   and $args{'cpanel_pass'}
   and $args{'cpanel_domain'};
 
-$args{'$email_addr'} = $args{'email_auth_user'} if !$args{'email_addr'};
+$args{'$email_addr'} ||= $args{'email_auth_user'}; 
 
+# Use email for output instead of STDOUT if email parameters specified
 my $send_email = 0;
 $send_email = 1 if $args{'email_addr'};
-
-my $status;
 
 #-------------------------------------------------------------------------------
 #  Set user account parameters, should probably be moved to a config file
@@ -66,39 +66,44 @@ my $ua = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 } );
 
 # Set update IP to detected remote IP address if IP not specified on cmd line
 my $url = 'http://cpanel.net/myip';
+my $no_ip_status;
 if ( !defined $args{'ip'} ) {
-    $status = "Couldn't detect remote IP, please check the URL $url.\n";
+    $no_ip_status = "Couldn't detect remote IP, please check the URL $url.\n";
     $args{'ip'} = get($url);
     if ( !$args{'ip'} ) {
-        ($send_email) ? send_email($status) : print $status;
+        output($no_ip_status);
         exit(1);
     }
     chomp $args{'ip'};
 }
 
 # Get current host IP address and see if it matches the given IP
-my ( $linenumber, $current_ip ) =
-  get_zone_data( $args{'domain'}, $args{'host'} );
+my ( $current_ip_line, $current_ip ) = get_zone_data( $args{'domain'}, $args{'host'} );
 if ( $current_ip eq $args{'ip'} ) {
-
-#print "Detected remote IP $args{'ip'} matches current IP $current_ip; no IP update needed.\n";
+    #print "Detected remote IP $args{'ip'} matches current IP $current_ip; no IP update needed.\n";
     exit(0);
 }
 
 #print "Trying to update $args{'host'} IP to $args{'ip'} ...\n";
-my $result = set_host_ip( $args{'domain'}, $linenumber, $args{'ip'} );
+my $result = set_host_ip( $args{'domain'}, $current_ip_line, $args{'ip'} );
 if ( $result eq 'succeeded' ) {
-    $status = "Update successful! Changed $current_ip to $args{'ip'}\n";
-    ($send_email) ? send_email($status) : print $status;
+    output("Update successful! Changed $current_ip to $args{'ip'}\n");
     exit(0);
 }
 else {
-    $status = "Update not successful, $result\n";
-    ($send_email) ? send_email($status) : print $status;
+    output("Update not successful, $result\n");
     exit(1);
 }
 
 exit(1);    #if we get here, something bad happened
+
+
+
+
+sub output {
+    my $status_msg = shift;
+    return ($send_email) ? send_email($status_msg) : print $status_msg;
+}
 
 sub send_email {
     my $body_text = shift;
@@ -129,7 +134,7 @@ sub send_email {
     $smtp->datasend($body_text);
     $smtp->dataend();
     $smtp->quit();
-    return;
+    return 1;
 }
 
 sub get_zone_data {
@@ -145,18 +150,16 @@ sub get_zone_data {
     my $response = $ua->request($request);
 
     my $zone;
-    eval { $zone = $xml->XMLin( $response->content ) };
+    $zone = eval { $xml->XMLin($response->content) };
     if ( !defined $zone ) {
-        $status =
-"Couldn't connect to $args{'cpanel_domain'} to fetch zone contents for $domain\n";
-        $status .=
-"Please ensure \$args{'cpanel_domain'}, \$args{'cpanel_user'}, and \$args{'cpanel_pass'} are set correctly.\n";
-        ($send_email) ? send_email($status) : print $status;
+        output(
+            "Couldn't connect to $args{'cpanel_domain'} to fetch zone contents for $domain\nPlease ensure $args{'cpanel_domain'}, $args{'cpanel_user'}, and $args{'cpanel_pass'} are set correctly.\n"
+        );
         exit(1);
     }
 
     # Assuming we find the zone, iterate over it and find the $hostname record
-    my ( $linenumber, $address, $found_hostname );
+    my ( $record_number, $address, $found_hostname );
     if ( $zone->{'data'}->{'status'} eq '1' ) {
         my $count = @{ $zone->{'data'}->{'record'} };
         my $item  = 0;
@@ -165,37 +168,33 @@ sub get_zone_data {
             my $type = $zone->{'data'}->{'record'}[$item]->{'type'};
             if ( ( defined($name) && $name eq $hostname ) && ( $type eq 'A' ) )
             {
-                $linenumber = $zone->{'data'}->{'record'}[$item]->{'Line'};
-                $address    = $zone->{'data'}->{'record'}[$item]->{'address'};
+                $record_number = $zone->{'data'}->{'record'}[$item]->{'Line'};
+                $address = $zone->{'data'}->{'record'}[$item]->{'address'};
                 $found_hostname = 1;
             }
             $item++;
         }
     }
     else {
-        $status =
-"Couldn't fetch zone for $domain.\n$zone->{'event'}->{'data'}->{'statusmsg;'}\n";
-        ($send_email) ? send_email($status) : print $status;
+        output("Couldn't fetch zone for $domain.\n$zone->{'event'}->{'data'}->{'statusmsg;'}\n");
         exit(1);
     }
 
     if ( !$found_hostname ) {
-        $status =
-"No A record present for $hostname, please verify it exists in the cPanel zonefile!\n";
-        ($send_email) ? send_email($status) : print $status;
+        output("No A record present for $hostname, please verify it exists in the cPanel zonefile!\n");
         exit(1);
     }
 
-    return ( $linenumber, $address );
+    return ( $record_number, $address );
 }
 
 sub set_host_ip {
-    my ( $domain, $linenumber, $newip ) = @_;
+    my ( $domain, $line_number, $newip ) = @_;
 
     my $xml = XML::Simple->new;
     my $request =
       HTTP::Request->new( GET =>
-"https://$args{'cpanel_domain'}:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=edit_zone_record&domain=$domain&line=$linenumber&address=$newip"
+"https://$args{'cpanel_domain'}:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=edit_zone_record&domain=$domain&line=$line_number&address=$newip"
       );
     $request->header( Authorization => $auth );
     my $response   = $ua->request($request);
@@ -214,7 +213,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.5
+ 0.6
 
 =cut
 
