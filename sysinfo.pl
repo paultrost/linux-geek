@@ -193,19 +193,17 @@ sub item {
 sub value {
     my ( $text, $newline ) = @_;
     $newline //= 1;
-    if ($newline) { $text .= "\n" };
+    $text .= "\n" if $newline;
     return ($color) ? BOLD YELLOW $text : $text;
 }
 
 sub alert {
-    my $text = shift;
-    $text .= "\n";
+    my $text = shift . "\n";
     return ($color) ? BOLD RED $text : $text;
 }
 
 sub header {
-    my $text = shift;
-    $text .= "\n";
+    my $text = shift . "\n";
     return ($color) ? BOLD BLUE $text : $text;
 }
 
@@ -246,13 +244,11 @@ sub get_mem_stats {
     close $stats_out;
 
     my @stats_processed;
-    my @stats_lines;
     foreach my $line (@raw_stats) {
         next if $line !~ /Mem|Swap/;
         chomp $line;
-        @stats_lines = split( /\s* /, $line );
-        foreach (@stats_lines) {
-            if ($_ =~ /[0-9]/ ) { push @stats_processed, $_ };
+        foreach ( split /\s* /, $line ) {
+            push @stats_processed, $_ if /[0-9]/;
         }
     }
     return @stats_processed;
@@ -267,7 +263,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3.1
+ 1.3.2
 
 =head1 USAGE
 
