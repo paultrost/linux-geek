@@ -13,6 +13,7 @@ use Time::Duration;
 use Term::ANSIColor qw(:constants);
 use Math::Round;
 use Disk::SMART;
+use autodie;
 $Term::ANSIColor::AUTORESET = 1;
 no if $] >= 5.018, warnings => 'experimental'; # turn off smartmatch warnings
 
@@ -64,8 +65,8 @@ foreach my $prog (@required_progs) {
 # Setup file handles for logging output and errors #
 ####################################################
 
-open( my $output, '>', \ my $sensors_out) or die "$!\n";
-open( my $errors, '>', \ my $err_out) or die "$!\n";
+open( my $output, '>', \ my $sensors_out);
+open( my $errors, '>', \ my $err_out);
 
 #########################
 # Process sensor values #
@@ -227,11 +228,11 @@ sub get_os {
     my $version = $linux->distribution_version();
     $version =~ s/^\s+|\s+$//g; #trim beginning and ending whitepace
 
-    open( my $kernel_out, '-|', 'uname -r' ) or die "uname command could not be executed\n";
+    open( my $kernel_out, '-|', 'uname -r' );
     chomp( my $kernel = <$kernel_out> );
     close $kernel_out;
 
-    open( my $arch_out, '-|', 'uname -i' ) or die "uname command could not be executed\n";
+    open( my $arch_out, '-|', 'uname -i' );
     chomp( my $arch = <$arch_out> );
     close $arch_out;
 
@@ -239,7 +240,7 @@ sub get_os {
 }
 
 sub get_mem_stats {
-    open( my $stats_out, '-|', 'free -m' ) or die "free command could not be executed\n";
+    open( my $stats_out, '-|', 'free -m' );
     my @raw_stats = <$stats_out>;
     close $stats_out;
 
@@ -263,7 +264,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3.2
+ 1.3.3
 
 =head1 USAGE
 
