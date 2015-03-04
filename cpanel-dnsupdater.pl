@@ -46,14 +46,12 @@ die "Required parameters not specified\n"
 $args{'$email_addr'} ||= $args{'email_auth_user'}; 
 
 # Use email for output instead of STDOUT if email parameters specified
-my $send_email = 0;
-$send_email = 1 if $args{'email_addr'};
+my $send_email = ( $args{'email_addr'} ) ? 1 : 0;
 
 #-------------------------------------------------------------------------------
 #  Set user account parameters, should probably be moved to a config file
 #-------------------------------------------------------------------------------
-my $auth = 'Basic '
-  . MIME::Base64::encode( $args{'cpanel_user'} . ':' . $args{'cpanel_pass'} );
+my $auth = 'Basic ' . MIME::Base64::encode( $args{'cpanel_user'} . ':' . $args{'cpanel_pass'} );
 
 #-------------------------------------------------------------------------------
 #  Disable SSL validation
@@ -106,9 +104,8 @@ sub output {
 }
 
 sub send_email {
-    my $body_text = shift;
-    my $smtp_method =
-      ( $args{'smtp_port'} == 465 ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
+    my $body_text   = shift;
+    my $smtp_method = ( $args{'smtp_port'} == 465 ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
     # If the SMTP transaction is failing, add 'Debug => 1,' to the method below
     # which will output the full details of the SMTP connection
@@ -117,18 +114,15 @@ sub send_email {
         Port    => $args{'smtp_port'},
         Hello   => $args{'helo'},
         Timeout => 10,
-      )
-      or die
-"Could not connect to $args{'outbound_server'} using port $args{'smtp_port'}\n$@\n";
+      ) or die "Could not connect to $args{'outbound_server'} using port $args{'smtp_port'}\n$@\n";
 
     $smtp->auth( $args{'email_auth_user'}, $args{'email_auth_pass'} );
     $smtp->mail( $args{'email_auth_user'} );
-    $smtp->to( $args{'email_addr'} );
+    $smtp->to( $args{'email_addr'} ) or die "Couldn't send email ", $smtp->message();
     $smtp->data();
     $smtp->datasend("From: $args{'email_auth_user'}\n");
     $smtp->datasend("To: $args{'email_addr'}\n");
-    $smtp->datasend(
-        "Subject: Ouutput of $0 for $args{'host'}.$args{'domain'}\n");
+    $smtp->datasend("Subject: Output of $0 for" .  $args{'host'} . $args{'domain'} . "\n");
     $smtp->datasend( 'Date: ' . localtime() . "\n" );
     $smtp->datasend("\n");
     $smtp->datasend($body_text);
@@ -141,14 +135,13 @@ sub get_zone_data {
     my ( $domain, $hostname ) = @_;
     $hostname .= ".$domain.";
 
-    my $xml = XML::Simple->new;
+    my $xml     = XML::Simple->new;
     my $request =
       HTTP::Request->new( GET =>
 "https://$args{'cpanel_domain'}:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=fetchzone&domain=$domain"
       );
     $request->header( Authorization => $auth );
     my $response = $ua->request($request);
-
     my $zone;
     $zone = eval { $xml->XMLin($response->content) };
     if ( !defined $zone ) {
@@ -190,10 +183,8 @@ sub get_zone_data {
 
 sub set_host_ip {
     my ( $domain, $line_number, $newip ) = @_;
-
-    my $xml = XML::Simple->new;
-    my $request =
-      HTTP::Request->new( GET =>
+    my $xml     = XML::Simple->new;
+    my $request = HTTP::Request->new( GET =>
 "https://$args{'cpanel_domain'}:2083/xml-api/cpanel?cpanel_xmlapi_module=ZoneEdit&cpanel_xmlapi_func=edit_zone_record&domain=$domain&line=$line_number&address=$newip"
       );
     $request->header( Authorization => $auth );
@@ -213,7 +204,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.6
+ 0.6.2
 
 =cut
 
