@@ -113,7 +113,7 @@ foreach my $chipset ( $sensors->list_chipsets ) {
                 }
                 my $speed_value = get_fan_speed( 'Fan', $chipset, $sensor );
                 $sensor =~ s/f/F/;
-                print {$output} item("$sensor speed: ") . value("$speed_value RPM");
+                print {$output} item("$sensor speed: "), value("$speed_value RPM");
                 $count_fan = 1;
             }
         }
@@ -131,8 +131,8 @@ foreach my $disk (@disks) {
 
     my ( $temp_c, $temp_f ) = $smart->get_disk_temp($disk);
     if ( $temp_c !~ 'N/A' ) {
-        print {$output} item("$disk Temperature: ") . value("${temp_c} C (${temp_f} F) ", 0);
-        print {$output} item('Health: ') . value($disk_health);
+        print {$output} item("$disk Temperature: "), value("${temp_c} C (${temp_f} F) ", 0);
+        print {$output} item('Health: '), value($disk_health);
         if ( -e $disk and $temp_c > $disk_temp_warn ) {
             print {$errors} alert("ALERT: $disk temperature threshold exceeded, $temp_c C (${temp_f} F)");
         }
@@ -141,8 +141,8 @@ foreach my $disk (@disks) {
         }
     }
     else {
-        print {$output} item("$disk Temperature: ") . value( 'N/A ', 0 );
-        print {$output} item('Health: ') . value($disk_health);
+        print {$output} item("$disk Temperature: "), value( 'N/A ', 0 );
+        print {$output} item('Health: '), value($disk_health);
     }
 }
 
@@ -166,7 +166,8 @@ if ( !$errorsonly ) {
 
     my $uptime  = duration( int uptime() );
     my $sysload = ( getload() )[0];
-    my $disks   = "\n$disk_models";
+    ( my $disks = $disk_models ) =~ s/\n/,/g;
+    $disks =~ s/,$//;
 
     print "\n";
     print item('Hostname:      '), value($hostname);
@@ -264,7 +265,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3.3
+ 1.3.4
 
 =head1 USAGE
 
