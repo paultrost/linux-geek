@@ -13,9 +13,9 @@ use Time::Duration;
 use Term::ANSIColor qw(:constants);
 use Math::Round;
 use Disk::SMART;
+use Switch;
 use autodie;
 $Term::ANSIColor::AUTORESET = 1;
-no if $] >= 5.018, warnings => 'experimental'; # turn off smartmatch warnings
 
 ######################
 # User set variables #
@@ -47,8 +47,8 @@ my $smart = Disk::SMART->new(@disks);
 # Set flag if -errorsonly option is specified #
 ###############################################
 
-my $errorsonly = ( /-errorsonly/ ~~ @ARGV ) ? 1 : 0;
-my $color      = ( /-nocolor/    ~~ @ARGV ) ? 0 : 1;
+my $errorsonly = ( grep { /-errorsonly/ } @ARGV ) ? 1 : 0;
+my $color      = ( grep { /-nocolor/    } @ARGV ) ? 0 : 1;
 
 ##############################################
 # Ensure prerequisite programs are installed #
@@ -80,9 +80,9 @@ foreach my $chipset ( $sensors->list_chipsets ) {
     my $count_fan = 0;
     my @sensor_names = sort( $sensors->list_sensors($chipset) );
     foreach my $sensor (@sensor_names) {
-        given ($sensor) {
+        switch ($sensor) {
             # Get CPU temps
-            when ( /Core/ ) {
+            case ( /Core/ ) {
                 if ( $count_cpu == 0 ) {
                     print {$output} "\n";
                     print {$output} header('CPU/MB Temperature(s)');
@@ -97,7 +97,7 @@ foreach my $chipset ( $sensors->list_chipsets ) {
             }
 
             # Get Motherboard temp
-            when ( /M\/BTemp/ ) {
+            case ( /M\/BTemp/ ) {
                 my ( $temp_c, $temp_f ) = get_temp( 'M/B', $chipset, $sensor );
                 print {$output} item("$sensor temperature: ") . value("${temp_c} C (${temp_f} F)");
                 if ( $temp_c > $mb_temp_warn ) {
@@ -106,7 +106,7 @@ foreach my $chipset ( $sensors->list_chipsets ) {
             }
 
             # Get Fan speeds
-            when ( /fan/ ) {
+            case ( /fan/ ) {
                 if ( $count_fan == 0 ) {
                     print {$output} header('Fan Speeds');
                     print {$output} "----------\n";
@@ -265,7 +265,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3.4
+ 1.3.5
 
 =head1 USAGE
 
