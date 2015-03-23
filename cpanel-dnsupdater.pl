@@ -63,7 +63,7 @@ my $ua = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 } );
 #-------------------------------------------------------------------------------
 
 # Set update IP to detected remote IP address if IP not specified on cmd line
-my $url = 'http://cpanel.net/myip';
+my $url = 'http://go.cpanel.net/myip';
 my $no_ip_status;
 if ( !defined $args{'ip'} ) {
     $no_ip_status = "Couldn't detect remote IP, please check the URL $url.\n";
@@ -204,7 +204,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.6.2
+ 0.6.3
 
 =cut
 
