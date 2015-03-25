@@ -249,7 +249,7 @@ sub get_mem_stats {
       grep { /[0-9]/ }
       map  { split(/\s* /) }
       grep { /Mem|Swap/ } @raw_stats;
-    chomp foreach (@stats_processed);
+    chomp @stats_processed;
 
     return @stats_processed;
 }
