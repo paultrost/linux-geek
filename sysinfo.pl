@@ -245,14 +245,12 @@ sub get_mem_stats {
     my @raw_stats = <$stats_out>;
     close $stats_out;
 
-    my @stats_processed;
-    foreach my $line (@raw_stats) {
-        next if $line !~ /Mem|Swap/;
-        chomp $line;
-        foreach ( split /\s* /, $line ) {
-            push @stats_processed, $_ if /[0-9]/;
-        }
-    }
+    my @stats_processed =
+      grep { /[0-9]/ }
+      map  { split(/\s* /) }
+      grep { /Mem|Swap/ } @raw_stats;
+    chomp foreach (@stats_processed);
+
     return @stats_processed;
 }
 
@@ -265,7 +263,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3.5
+ 1.3.6
 
 =head1 USAGE
 
