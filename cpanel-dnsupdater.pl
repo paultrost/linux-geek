@@ -146,8 +146,9 @@ sub get_zone_data {
     $zone = eval { $xml->XMLin($response->content) };
     if ( !defined $zone ) {
         output(
-            "Couldn't connect to $args{'cpanel_domain'} to fetch zone contents for $domain\nPlease ensure $args{'cpanel_domain'}, $args{'cpanel_user'}, and $args{'cpanel_pass'} are set correctly.\n"
+            "Couldn't connect to '$args{'cpanel_domain'}' to fetch zone contents for $domain\nPlease ensure '$args{'cpanel_domain'}', '$args{'cpanel_user'}', and '$args{'cpanel_pass'}' are set correctly.\n"
         );
+	output($response->content);
         exit(1);
     }
 
@@ -204,7 +205,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.6.3
+ 0.6.4
 
 =cut
 
