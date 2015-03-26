@@ -63,29 +63,18 @@ my $ua = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 } );
 #-------------------------------------------------------------------------------
 
 # Set update IP to detected remote IP address if IP not specified on cmd line
-my $url = 'http://go.cpanel.net/myip';
-my $no_ip_status;
-if ( !defined $args{'ip'} ) {
-    $no_ip_status = "Couldn't detect remote IP, please check the URL $url.\n";
-    $args{'ip'} = get($url);
-    if ( !$args{'ip'} ) {
-        output($no_ip_status);
-        exit(1);
-    }
-    chomp $args{'ip'};
-}
+my $external_ip = $args{'ip'} || get_external_ip();
 
 # Get current host IP address and see if it matches the given IP
 my ( $current_ip_line, $current_ip ) = get_zone_data( $args{'domain'}, $args{'host'} );
-if ( $current_ip eq $args{'ip'} ) {
-    #print "Detected remote IP $args{'ip'} matches current IP $current_ip; no IP update needed.\n";
+if ( $current_ip eq $external_ip ) {
+    #print "Detected remote IP $external_ip matches current IP $current_ip; no IP update needed.\n";
     exit(0);
 }
-
-#print "Trying to update $args{'host'} IP to $args{'ip'} ...\n";
-my $result = set_host_ip( $args{'domain'}, $current_ip_line, $args{'ip'} );
+#print "Trying to update $args{'host'} IP to $external_ip ...\n";
+my $result = set_host_ip( $args{'domain'}, $current_ip_line, $external_ip );
 if ( $result eq 'succeeded' ) {
-    output("Update successful! Changed $current_ip to $args{'ip'}\n");
+    output("Update successful! Changed $current_ip to $external_ip\n");
     exit(0);
 }
 else {
@@ -195,6 +184,21 @@ sub set_host_ip {
     return ( $set_status == 1 ) ? 'succeeded' : $reply->{'data'}->{'statusmsg'};
 }
 
+sub get_external_ip {
+    my $url = 'http://go.cpanel.net/myip';
+    my $ip;
+    if ( !defined $args{'ip'} ) {
+        $ip = get($url);
+        chomp $ip;
+        if ( !$ip ) {
+            output("Couldn't detect remote IP, please check the URL $url.\n");
+            exit(1);
+        }
+    }
+    return $ip;
+}
+
+
 =pod
 
 =head1 NAME
@@ -205,7 +209,7 @@ sub set_host_ip {
 
 =head1 VERSION
 
- 0.6.4
+ 0.6.5
 
 =cut
 
