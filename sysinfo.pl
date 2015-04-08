@@ -178,6 +178,7 @@ if ( !$errorsonly ) {
     print item('System uptime: '), value($uptime);
     print item('System load:   '), value($sysload);
     print item('Disks:         '), value($disks);
+    print "\n";
     print "$sensors_out\n";
 }
 
