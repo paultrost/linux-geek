@@ -52,9 +52,7 @@ GetOptions( \%args,
     'helo=s',
     'debug',
     'debug_smtp',
-    'device=s',
-    'mountpoint=s',
-    'fstype=s',
+    'target=s',
     'email_auth_user=s',
     'email_auth_pass=s',
     'email_addr=s',
@@ -70,9 +68,7 @@ pod2usage(1) if $args{'help'};
 
 # Display error if one of the required parameters isn't specified
 die "Not all required parameters specified, run '$0 --help' and check your arguments\n"
-  unless ( $args{'device'}
-    and $args{'mountpoint'}
-    and $args{'fstype'}
+  unless ( $args{'target'}
     and $args{'email_auth_user'}
     and $args{'email_auth_pass'}
     and $args{'outbound_server'}
@@ -95,61 +91,47 @@ if ( $args{'exclude'} ) {
 # Additional variables needed #
 ###############################
 
-my $nounmount;
 my $error    = 0;
 my $hostname = hostname();
 my $date     = localtime();
 
-#######################################################
-# Check to see that $args{'device'} and $args{'mountpoint'} are valid #
-#######################################################
+#############################
+# Validate target directory #
+#############################
 
-die "$args{'device'} is not a valid block device\n"          if ( !-b $args{'device'} );
-die "$args{'mountpoint'} does not exist, create manually.\n" if ( !-d $args{'mountpoint'} );
+open( my $error_list, '>', \ my $validate_errors );
+
+if ( !-d $args{'target'} ) {
+    print {$error_list} "$args{'target'} does not exist, create manually.\n";
+}
+
+close $error_list;
+die $validate_errors . "\n" if $validate_errors;
+
+###########################################################
+# Rsync each folder in $args{'folder'} to $args{'target'} #
+###########################################################
 
 open( my $report, '>', \ my $report_text ) or die "$!\n";
-
-my $nodrivemount;
-mount_device();
-
-################################################
-# Rsync each folder in $args{'folder'} to $args{'mountpoint'} #
-################################################
-
 open( my $tmp_filename, '>', $tmpfile )
     or die "Could not open $tmpfile, $!\n";
 close $tmp_filename;
 
-# Testing for false $nodrivemount seems backwards yes, but keep in mind
-# this is testing captured output of the mount command which will only
-# have output in a failure
-if ( !$nodrivemount ) {
-    foreach my $folder ( @{ $args{'folder'} } ) {
-        if ( !-d $folder ) {
-            print {$report} "*** Folder $folder isn't valid, not trying to rsync it ***\n\n";
-            $error++;
-            next;
-        }
+foreach my $folder ( @{ $args{'folder'} } ) {
+    print {$report} "Now backing up folder '$folder':\n";
+    my $out = qx( rsync @rsyncopts $folder $args{'target'} 2>&1 );
 
-        # Actually run rsync
-        print {$report} "Now backing up folder '$folder':\n";
-        my $out = qx( rsync @rsyncopts $folder $args{'mountpoint'} 2>&1 );
-
-        if ( $? != 0 and $out !~ /sent.*bytes.*received.*bytes/ ) {
-            print {$report} "Could not copy $folder to $args{'mountpoint'}\n\n";
-            print {$report} $out;
-            $error++;
-        }
-        else {
-            print {$report} $out;
-            if ($args{'debug'}) { print {$report} "\n\n"; }
-        }
+    if ( $? != 0 and $out !~ /sent.*bytes.*received.*bytes/ ) {
+        print {$report} "Could not copy $folder to $args{'target'}\n\n";
+        print {$report} $out;
+        $error++;
+    }
+    else {
+        print {$report} $out;
+        if ( $args{'debug'} ) { print {$report} "\n\n"; }
     }
 }
-
 unlink $tmpfile;
-
-unmount_device();
 
 #################### 
 # Finalize @REPORT #
@@ -160,7 +142,6 @@ unmount_device();
 $date = localtime();
 print {$report} "Backup finished at $date\n";
 my $status = ($error) ? "failed or couldn't rsync a specified directory" : 'successful';
-
 close $report;
 
 ######################################################
@@ -184,47 +165,6 @@ send_email();
 
 exit ($error) ? 1 : 0;
 
-
-
-
-sub mount_device {
-    $nodrivemount = qx(mount $args{'device'} $args{'mountpoint'} -t $args{'fstype'} 2>&1);
-    if ($nodrivemount) {
-        print {$report} "*** Could not mount $args{'device'} on $args{'mountpoint'} ***\n\n$nodrivemount\n";
-        $nounmount = 1;
-    }
-    else {
-        print {$report} "$args{'device'} has been mounted on $args{'mountpoint'}\n\n";
-    }
-
-    my $df = df($args{'device'});
-    if ( $df->{bfree} == 0 ) {
-        system( 'umount', $args{'mountpoint'} );
-        print {$report} "*** Mount point $args{'mountpoint'} is out of space.***\n\n";
-        $nounmount = 1;
-    }
-    return;
-}
-
-sub unmount_device {
-    # Unmount $args{'device'}, but only if this script was what mounted it
-    if ( !$nounmount ) {
-        $nodrivemount = qx(umount $args{'mountpoint'} 2>&1);
-    }
-
-    if ( $nodrivemount && !$nounmount ) {
-        print {$report} "*** $args{'device'} could not be unmounted from $args{'mountpoint'} ***:\n\n $nodrivemount\n\n";
-        $error++;
-    }
-    elsif ($nounmount) {
-        print {$report} "*** $args{'device'} was already mounted on $args{'mountpoint'}, not attemping to unmount ***\n\n";
-        $error++;
-    }
-    else {
-        print {$report} "\n$args{'device'} has been unmounted from $args{'mountpoint'}\n\n";
-    }
-    return;
-}
 
 sub send_email {
     $smtp->auth( $args{'email_auth_user'}, $args{'email_auth_pass'} );
@@ -251,7 +191,7 @@ sub send_email {
 
 =head1 VERSION
 
- 0.8
+ 0.8.1
 
 =cut
 
@@ -260,7 +200,7 @@ sub send_email {
  backup.pl [options] [parameters]
 
  Example:
- backup.pl --device /dev/sdc1 --mountpoint /backup --fstype ext4 --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder /etc --folder /usr/local/ --folder /home --exclude Movied
+ backup.pl --target /backup --email_addr me@me.com --email_auth_user me@me.com --email_auth_pass 12345 --outbound_server mail.myserver.com --folder /etc --folder /usr/local/ --folder /home --exclude Movies
 
 =cut
 
@@ -274,9 +214,7 @@ sub send_email {
  
 =head2  Required
 
- --device          Block device to mount
- --mountpoint      Directory to mount device at
- --fstype          Filesystem type on the device (ext4, ntfs, etc..)
+ --target          Target directory for rsync
  --email_auth_user Email address for SMTP Auth
  --email_auth_pass Password for SMTP Auth (use \ to escape characters)
  --email_addr      Email address to send backup report to (defaults to email_auth_user)
