@@ -111,7 +111,7 @@ sub send_email {
     $smtp->data();
     $smtp->datasend("From: $args{'email_auth_user'}\n");
     $smtp->datasend("To: $args{'email_addr'}\n");
-    $smtp->datasend("Subject: Output of $0 for" .  $args{'host'} . $args{'domain'} . "\n");
+    $smtp->datasend("Subject: Updated IP address for " .  "$args{'host'}.$args{'domain'}\n");
     $smtp->datasend( 'Date: ' . localtime() . "\n" );
     $smtp->datasend("\n");
     $smtp->datasend($body_text);
@@ -209,7 +209,7 @@ sub get_external_ip {
 
 =head1 VERSION
 
- 0.6.5
+ 0.6.6
 
 =cut
 
