@@ -36,8 +36,8 @@ die "This script has to be run as root!\n" if ( $> != 0 );
 # Set list of disks on the system #
 ###################################
 
-chomp( my @disks = glob '/dev/*d[a-z]' );
-my $smart = Disk::SMART->new(@disks);
+my $smart = Disk::SMART->new();
+my @disks = $smart->get_disk_list;
 
 #***************************************#
 # NOTHING BELOW HERE SHOULD BE CHANGED! #
