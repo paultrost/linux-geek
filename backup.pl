@@ -41,9 +41,10 @@ pod2usage(1) if !@ARGV;
 # Set defaults for positional parameters
 
 my %args = (
-    smtp_port => '587',
-    helo      => hostname(),
+    smtp_port  => '587',
+    helo       => hostname(),
     debug_smtp => 0,
+    debug      => 0,
 );
 # Get the options from the command line
 GetOptions( \%args,
@@ -157,7 +158,7 @@ my $smtp      = $smtp_method->new(
     $args{'outbound_server'},
     Port            => $args{'smtp_port'},
     Hello           => $args{'helo'},
-    Timeout         => 10,
+    Timeout         => 30,
     Debug           => $args{'debug_smtp'},
 ) or die "Could not connect to $args{'outbound_server'} using port $args{'smtp_port'}\n$!\n";
 
@@ -191,7 +192,7 @@ sub send_email {
 
 =head1 VERSION
 
- 0.8.1
+ 0.8.2
 
 =cut
 
@@ -247,7 +248,7 @@ sub send_email {
 
 =head1 LICENSE AND COPYRIGHT
   
- Copyright 2014.
+ Copyright 2015.
  This script is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License v2, or at your option any later version.
  <http://gnu.org/licenses/gpl.html>
 
