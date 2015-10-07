@@ -12,6 +12,7 @@ use Getopt::Long;
 use Pod::Usage;
 use Sys::Hostname;
 use Net::SMTP::SSL;
+use Net::Ping::External qw(ping);
 
 #-------------------------------------------------------------------------------
 #  Parse command line options
@@ -32,6 +33,7 @@ GetOptions(
     'helo=s',            'smtp_port=s',
     'email_auth_user=s', 'email_auth_pass=s',
     'email_addr=s',      'outbound_server=s',
+    'check_host=s',
 );
 
 pod2usage(1) if $args{'help'};
@@ -41,7 +43,8 @@ die "Required parameters not specified\n"
   and $args{'host'}
   and $args{'cpanel_user'}
   and $args{'cpanel_pass'}
-  and $args{'cpanel_domain'};
+  and $args{'cpanel_domain'}
+  and $args{'check_host'};
 
 $args{'$email_addr'} ||= $args{'email_auth_user'}; 
 
@@ -185,6 +188,13 @@ sub set_host_ip {
 }
 
 sub get_external_ip {
+
+    #check for connectivity
+    #no need to run any further if connection out is dead
+    my $alive = ping( 'host' => $args{'check_host'} );
+    exit(1) if !$alive;
+
+    #grab detetected IP address
     my $url = 'http://go.cpanel.net/myip';
     my $ip;
     if ( !defined $args{'ip'} ) {
@@ -209,7 +219,7 @@ sub get_external_ip {
 
 =head1 VERSION
 
- 0.6.6
+ 0.7
 
 =cut
 
@@ -218,7 +228,7 @@ sub get_external_ip {
  cpanel-dnsupdater.pl [options]
 
  Example:
- cpanel-dnsupdater.pl --host home --domain domain.tld --cpanel_user cptest --cpanel_pass 12345 --cpanel_domain cptest.tld
+ cpanel-dnsupdater.pl --host home --domain domain.tld --cpanel_user cptest --cpanel_pass 12345 --cpanel_domain cptest.tld --check_host 8.8.8.8
 
 =cut
 
@@ -237,6 +247,7 @@ sub get_external_ip {
   --cpanel_user   cPanel account login name
   --cpanel_pass   cPanel account password
   --cpanel_domain cPanel account domain name
+  --check_host    IP address of host to check for connectivity. eg. 8.8.8.8 or your DNS resolver
 
 =head2  Optional
 
