@@ -2,11 +2,12 @@
 
 use strict;
 use warnings;
-use Net::SMTP::SSL;
+use Net::SMTPS;
 use Getopt::Long;
 use Pod::Usage;
 use Sys::Hostname;
 use Filesys::Df;
+use IO::Socket::SSL qw( SSL_VERIFY_NONE );
 
 
 #################################
@@ -41,7 +42,6 @@ pod2usage(1) if !@ARGV;
 # Set defaults for positional parameters
 
 my %args = (
-    smtp_port  => '587',
     helo       => hostname(),
     debug_smtp => 0,
     debug      => 0,
@@ -49,7 +49,6 @@ my %args = (
 # Get the options from the command line
 GetOptions( \%args,
     'help|?',
-    'smtp_port=s',
     'helo=s',
     'debug',
     'debug_smtp',
@@ -150,36 +149,33 @@ close $report;
 ######################################################
 
 $report_text = "Date: $date\n\n" . $report_text;
-my $smtp_method = ( $args{'smtp_port'} eq '465' ) ? 'Net::SMTP::SSL' : 'Net::SMTP';
 
 # If the SMTP transaction is failing, use --debug_smtp
 # which will output the full details of the SMTP connection
-my $smtp      = $smtp_method->new(
+my $smtp = Net::SMTPS->new(
     $args{'outbound_server'},
-    Port            => $args{'smtp_port'},
     Hello           => $args{'helo'},
+    Port            => 587,
     Timeout         => 30,
+    doSSL           => 'starttls',
+    SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE,
     Debug           => $args{'debug_smtp'},
-) or die "Could not connect to $args{'outbound_server'} using port $args{'smtp_port'}\n$!\n";
+) or die "Could not connect to $args{'outbound_server'}\n$@\n";
 
-send_email();
+$smtp->auth( $args{'email_auth_user'}, $args{'email_auth_pass'} ) or die "Couldn't send email: ", $smtp->message();
+$smtp->mail( $args{'email_auth_user'} );
+$smtp->to( $args{'email_addr'} ) or die "Couldn't send email: ", $smtp->message();
+$smtp->data();
+$smtp->datasend("From: $args{'email_auth_user'}\n");
+$smtp->datasend("To: $args{'email_addr'}\n");
+$smtp->datasend("Subject: Backup $status for $hostname\n");
+$smtp->datasend("Date: $date\n");
+$smtp->datasend("\n");
+$smtp->datasend($report_text);
+$smtp->dataend();
+$smtp->quit();
 
 exit ($error) ? 1 : 0;
-
-
-sub send_email {
-    $smtp->auth( $args{'email_auth_user'}, $args{'email_auth_pass'} );
-    $smtp->mail( $args{'email_auth_user'} );
-    $smtp->to( $args{'email_addr'} );
-    $smtp->data();
-    $smtp->datasend("From: $args{'email_auth_user'}\n");
-    $smtp->datasend("To: $args{'email_addr'}\n");
-    $smtp->datasend("Subject: Backup $status for $hostname\n");
-    $smtp->datasend($report_text);
-    $smtp->dataend();
-    $smtp->quit();
-    return;
-}
 
 
 =pod
@@ -192,7 +188,7 @@ sub send_email {
 
 =head1 VERSION
 
- 0.8.2
+ 0.8.3
 
 =cut
 
@@ -226,7 +222,6 @@ sub send_email {
 
  --help            Display available and required options
  --email_addr      Email address to send backup report to (defaults to email_auth_user)
- --smtp_port       SMTP port to connect to, the default is 587 but 465 for SSL and 25 are supported as well
  --helo            Change the HELO that is sent to the outbound server, this setting defaults to the current hostname
  --debug           Enable verbose output of rsync for debugging
  --debug_smtp      Enable verbose screen output for SMTP transaction emailing the report
