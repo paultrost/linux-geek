@@ -169,7 +169,6 @@ $smtp->data();
 $smtp->datasend("From: $args{'email_auth_user'}\n");
 $smtp->datasend("To: $args{'email_addr'}\n");
 $smtp->datasend("Subject: Backup $status for $hostname\n");
-$smtp->datasend("Date: $date\n");
 $smtp->datasend("\n");
 $smtp->datasend($report_text);
 $smtp->dataend();
@@ -188,7 +187,7 @@ exit ($error) ? 1 : 0;
 
 =head1 VERSION
 
- 0.8.3
+ 0.8.4
 
 =cut
 
