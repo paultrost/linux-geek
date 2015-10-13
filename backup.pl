@@ -148,8 +148,6 @@ close $report;
 # Send backup successful/failed message to recipient #
 ######################################################
 
-$report_text = "Date: $date\n\n" . $report_text;
-
 # If the SMTP transaction is failing, use --debug_smtp
 # which will output the full details of the SMTP connection
 my $smtp = Net::SMTPS->new(
@@ -169,6 +167,7 @@ $smtp->data();
 $smtp->datasend("From: $args{'email_auth_user'}\n");
 $smtp->datasend("To: $args{'email_addr'}\n");
 $smtp->datasend("Subject: Backup $status for $hostname\n");
+$smtp->datasend( 'Date: ' . localtime() . "\n" );
 $smtp->datasend("\n");
 $smtp->datasend($report_text);
 $smtp->dataend();
@@ -187,7 +186,7 @@ exit ($error) ? 1 : 0;
 
 =head1 VERSION
 
- 0.8.4
+ 0.8.5
 
 =cut
 
