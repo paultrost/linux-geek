@@ -26,12 +26,6 @@ my $cpu_temp_warn  = 65;
 my $mb_temp_warn   = 60;
 my $disk_temp_warn = 40;
 
-#######################################
-# Stop if not called as the root user #
-#######################################
-
-die "This script has to be run as root!\n" if ( $> != 0 );
-
 ###################################
 # Set list of disks on the system #
 ###################################
@@ -49,17 +43,6 @@ my @disks = $smart->get_disk_list;
 
 my $errorsonly = ( grep { /-errorsonly/ } @ARGV ) ? 1 : 0;
 my $color      = ( grep { /-nocolor/    } @ARGV ) ? 0 : 1;
-
-##############################################
-# Ensure prerequisite programs are installed #
-##############################################
-
-my @required_progs = qw(smartctl);
-foreach my $prog (@required_progs) {
-    my $prog_path = which($prog);
-    die "$prog is not installed or is not executable. Please install and run $0 again.\n"
-        if ( !$prog_path || !-x $prog_path );
-}
 
 ####################################################
 # Setup file handles for logging output and errors #
@@ -264,7 +247,7 @@ sub get_mem_stats {
 
 =head1 VERSION
 
- 1.3.6
+ 1.3.7
 
 =head1 USAGE
 
